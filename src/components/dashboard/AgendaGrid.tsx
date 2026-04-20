@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { startOfWeek, addDays, setHours, format, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -164,7 +164,7 @@ export function AgendaGrid({ tasks, clients }: { tasks: Task[], clients: Client[
         <div className="flex-1 grid grid-cols-[48px_repeat(5,minmax(0,1fr))]" style={{ minHeight: totalGridHeight }}>
            
            {HOURS.map((hour) => (
-             <React.Fragment key={hour}>
+             <Fragment key={hour}>
                
                {/* Label do Horário (Eixo Y) */}
                <div className="border-r border-b border-transparent bg-bg-surface opacity-90 z-10 relative flex justify-center shrink-0">
@@ -211,7 +211,7 @@ export function AgendaGrid({ tasks, clients }: { tasks: Task[], clients: Client[
                   )
                })}
 
-             </React.Fragment>
+             </Fragment>
            ))}
            
         </div>
