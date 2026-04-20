@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
 import { FileText, Search, Plus, Trash2, Clock, X, Home } from 'lucide-react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { useNotes } from '../../hooks/useNotes'
 import { RTE } from '../notes/RTE'
 import type { Database } from '../../types/database.types'
