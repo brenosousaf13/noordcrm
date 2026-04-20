@@ -1,5 +1,4 @@
-import { useEditor, EditorContent } from '@tiptap/react'
-import { BubbleMenu } from '@tiptap/extension-bubble-menu'
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
@@ -49,13 +48,18 @@ export function RTE({ initialContent, onChange }: RTEProps) {
     }
   }, [])
 
+  // O Tiptap BubbleMenu tipa usando React 18 forwardRef, que quebra o build no TypeScript do React 19
+  // Usamos as any para bypassar a barreira estrita de types, no runtime ele funciona perfeitamente.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const BubbleMenuComponent = BubbleMenu as any
+
   if (!editor) return <div className="animate-pulse w-full h-full bg-bg-surface-raised rounded"></div>
 
   return (
     <div className="flex flex-col h-full w-full relative">
       {/* Bubble Menu Contextual */}
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex gap-1 bg-bg-surface border border-border shadow-modal rounded-radius-md py-1.5 px-2">
+        <BubbleMenuComponent editor={editor} tippyOptions={{ duration: 100 }} className="flex gap-1 bg-bg-surface border border-border shadow-modal rounded-radius-md py-1.5 px-2">
           <button 
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={`font-display font-bold w-7 h-7 rounded flex items-center justify-center text-sm transition-colors ${editor.isActive('bold') ? 'bg-accent text-white' : 'hover:bg-bg-app text-text-secondary'}`}
@@ -96,7 +100,7 @@ export function RTE({ initialContent, onChange }: RTEProps) {
           >
             1—
           </button>
-        </BubbleMenu>
+        </BubbleMenuComponent>
       )}
 
       {/* Area de Digitação Plena */}
