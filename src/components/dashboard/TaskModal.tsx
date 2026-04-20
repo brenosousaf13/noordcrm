@@ -23,6 +23,7 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
   ]
 
   const [draftTitle, setDraftTitle] = useState(task?.title || '')
+  const [draftDescription, setDraftDescription] = useState(task?.description || '')
   const [draftClientId, setDraftClientId] = useState(task?.client_id || '')
   const [draftEstimated, setDraftEstimated] = useState(task?.estimated_minutes || 60)
   const [draftPriority, setDraftPriority] = useState<1|2|3>(task?.priority || 2)
@@ -75,7 +76,8 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
         // Only set schedule as null if CREATING. If editing, preserve the timeline!
         scheduled_at: task ? task.scheduled_at : null,
         start_date: draftStartDate ? draftStartDate.toISOString() : null,
-        deadline: draftDeadlineDate ? draftDeadlineDate.toISOString() : null
+        deadline: draftDeadlineDate ? draftDeadlineDate.toISOString() : null,
+        description: draftDescription || null
       })
       onClose()
     } catch(err) {
@@ -122,6 +124,15 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
                       {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                    </select>
                  </div>
+               </div>
+
+               <div className="space-y-1.5 border border-border bg-bg-app/30 p-1.5 rounded-radius-sm focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 transition-all">
+                  <textarea 
+                    placeholder="Escreva detalhes, passos ou uma descrição desta tarefa..." 
+                    value={draftDescription} 
+                    onChange={e => setDraftDescription(e.target.value)} 
+                    className="w-full text-small px-3 py-2 bg-transparent outline-none h-20 resize-none custom-scrollbar"
+                  />
                </div>
 
                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-bg-app/50 p-4 border border-border rounded-radius-sm">

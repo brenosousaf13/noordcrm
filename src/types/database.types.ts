@@ -60,6 +60,7 @@ export interface Database {
           is_recurrent: boolean
           start_date: string | null
           scheduled_at: string | null
+          description: string | null
           created_at: string
         }
         Insert: {
@@ -76,6 +77,7 @@ export interface Database {
           is_recurrent?: boolean
           start_date?: string | null
           scheduled_at?: string | null
+          description?: string | null
           created_at?: string
         }
         Update: {
@@ -92,6 +94,7 @@ export interface Database {
           is_recurrent?: boolean
           start_date?: string | null
           scheduled_at?: string | null
+          description?: string | null
           created_at?: string
         }
         Relationships: []

@@ -5,7 +5,7 @@ import { AgendaGrid } from '../components/dashboard/AgendaGrid'
 import { TasksBoard } from '../components/dashboard/TasksBoard'
 import { NotesPanel } from '../components/dashboard/NotesPanel'
 import { ClientsPage } from '../components/clients/ClientsPage'
-import { DndContext, pointerWithin, DragOverlay } from '@dnd-kit/core'
+import { DndContext, pointerWithin, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { useTasks } from '../hooks/useTasks'
 import { useClients } from '../hooks/useClients'
@@ -16,6 +16,14 @@ export function Dashboard() {
   const { clients } = useClients()
   const [activeTab, setActiveTab] = useState('home')
   const [activeDragData, setActiveDragData] = useState<any>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  )
 
   const navItems = [
     { id: 'home', label: 'Home', icon: LayoutDashboard },
@@ -147,7 +155,7 @@ export function Dashboard() {
       {activeTab === 'clientes' ? (
         <ClientsPage />
       ) : activeTab === 'home' ? (
-        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
            <main className="flex-1 p-5 h-screen overflow-hidden flex flex-col gap-5 relative z-0 animate-in fade-in duration-300">
              
              {/* Linha Superior: Agenda (Full Width, ~45% Altura) */}
@@ -158,7 +166,7 @@ export function Dashboard() {
              {/* Linha Inferior: Tarefas (Lado Esquerdo) + Notas (Lado Direito) */}
              <div className="flex-1 min-h-0 flex gap-5 w-full relative">
                
-               <div className="flex-[1.25] min-w-0 flex flex-col h-full relative">
+               <div className="flex-1 min-w-0 flex flex-col h-full relative">
                   <TasksBoard tasks={tasks} clients={clients} addTask={addTask} updateTask={updateTask} />
                </div>
 
