@@ -30,15 +30,14 @@ function DroppableSlot({ date, hour }: { date: Date, hour: number }) {
   )
 }
 
-function DraggableAgendaTask({ task, top, height, clientColor, clientName }: { task: Task, top: number, height: number, clientColor?: string, clientName?: string }) {
+function DraggableAgendaTask({ task, heightPx, clientColor, clientName }: { task: Task, heightPx?: number, clientColor?: string, clientName?: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: String(task.id),
     data: { task }
   })
   
   const style = {
-    top: `${top}px`,
-    height: `${height}px`,
+    minHeight: heightPx ? `${Math.max(60, heightPx)}px` : undefined,
     ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {})
   }
 
@@ -47,19 +46,19 @@ function DraggableAgendaTask({ task, top, height, clientColor, clientName }: { t
       ref={setNodeRef} 
       {...listeners} 
       {...attributes}
-      className={`absolute left-1 right-2 bg-bg-surface rounded-radius-sm shadow-raised border border-border border-l-4 p-2 flex flex-col cursor-grab pointer-events-auto hover:-translate-y-[1px] transition-transform ${isDragging ? 'opacity-50 z-50 cursor-grabbing' : 'z-20'}`}
+      className={`w-full bg-bg-surface rounded-radius-sm shadow-raised border border-border border-l-4 p-2 flex flex-col cursor-grab pointer-events-auto hover:-translate-y-[1px] transition-transform relative z-20 shrink-0 ${isDragging ? 'opacity-50 z-50 cursor-grabbing' : ''}`}
       style={{ ...style, borderLeftColor: clientColor || '#888888' }}
     >
-      <div className={`flex justify-between items-start mb-1 ${height <= 50 ? 'h-full items-center' : ''}`}>
-        <div className={`flex flex-col overflow-hidden leading-tight ${height <= 50 ? 'justify-center h-full' : ''}`}>
+      <div className={`flex justify-between items-start mb-1 ${(heightPx || 0) <= 50 ? 'h-full items-center' : ''}`}>
+        <div className={`flex flex-col overflow-hidden leading-tight ${(heightPx || 0) <= 50 ? 'justify-center h-full' : ''}`}>
            <span className="text-body-lg font-medium truncate">{task.title}</span>
-           {height > 50 && clientName && <span className="text-[10px] text-text-secondary truncate mt-[2px]">{clientName}</span>}
-           {height <= 50 && clientName && <span className="text-[10px] text-text-secondary truncate mt-[2px] mr-2">{clientName}</span>}
+           {(heightPx || 0) > 50 && clientName && <span className="text-[10px] text-text-secondary truncate mt-[2px]">{clientName}</span>}
+           {(heightPx || 0) <= 50 && clientName && <span className="text-[10px] text-text-secondary truncate mt-[2px] mr-2">{clientName}</span>}
         </div>
         
         {/* Lado Direito do Card */}
         <div className="flex items-center gap-1 shrink-0 ml-1">
-           {height > 50 && (
+           {(heightPx || 0) > 50 && (
              <div className="flex flex-col gap-[3px] mt-1 items-end opacity-80 shrink-0">
                <div className={`w-3.5 h-[3px] rounded-full ${task.priority === 1 ? 'bg-red' : task.priority === 2 ? 'bg-orange' : 'bg-gray-muted'}`} />
                <div className={`w-2.5 h-[3px] rounded-full ${task.priority === 1 ? 'bg-red' : task.priority === 2 ? 'bg-orange' : 'bg-gray-muted'}`} />
@@ -161,68 +160,60 @@ export function AgendaGrid({ tasks, clients }: { tasks: Task[], clients: Client[
           ))}
         </div>
 
-        {/* Time Grid Matrix - Bugfix applying absolute explicit height to enforce full border paints */}
-        <div className="flex-1 flex relative" style={{ height: totalGridHeight }}>
+        {/* Time Grid Matrix - CSS Grid Architecture */}
+        <div className="flex-1 grid grid-cols-[48px_repeat(5,minmax(0,1fr))]" style={{ minHeight: totalGridHeight }}>
            
-           {/* Eixo Y: Horários */}
-           <div className="w-12 shrink-0 border-r border-border flex flex-col bg-bg-surface opacity-90 z-10">
-             {HOURS.map((hour) => (
-               <div key={hour} className="relative border-b border-transparent shrink-0" style={{ height: PIXELS_PER_HOUR }}>
-                 <span className="text-mono text-[10px] text-text-tertiary absolute -top-[9px] right-2 bg-bg-surface px-0.5 leading-none">
-                   {hour.toString().padStart(2, '0')}:00
-                 </span>
+           {HOURS.map((hour) => (
+             <React.Fragment key={hour}>
+               
+               {/* Label do Horário (Eixo Y) */}
+               <div className="border-r border-b border-transparent bg-bg-surface opacity-90 z-10 relative flex justify-center shrink-0">
+                  <span className="text-mono text-[10px] text-text-tertiary absolute -top-[9px] right-2 bg-bg-surface px-0.5 leading-none">
+                     {hour.toString().padStart(2, '0')}:00
+                  </span>
                </div>
-             ))}
-           </div>
 
-           {/* Colunas Verticais e Droppables */}
-           <div className="flex-1 flex relative">
-             
-             {/* Background Lines Físicas e Droppables em Layer 0 */}
-             {weekDays.map((date, colIdx) => (
-               <div key={`col-${date.getTime()}`} className={`flex-1 border-r border-border/50 relative flex flex-col ${colIdx === 4 ? 'border-r-0' : ''}`}>
-                  {HOURS.map((hour) => (
-                    <div 
-                       key={`cell-${date.getTime()}-${hour}`} 
-                       className="w-full relative shrink-0 border-b border-border/40 hover:bg-accent/5 transition-colors group" 
-                       style={{ height: PIXELS_PER_HOUR }}
-                    >
-                       {/* Elemento que capta o Hover do DND */}
-                       <DroppableSlot date={date} hour={hour} />
-                    </div>
-                  ))}
-
-                  {/* Renderizando as Tasks programadas HOJE (OVERLAYS NESSA COLUNA) */}
-                  {scheduledTasks.map(task => {
+               {/* Células DND e Tarefas p/ cada Dia naquela Hora */}
+               {weekDays.map((date, colIdx) => {
+                  const isLastCol = colIdx === 4
+                  
+                  // Encontra todas as tarefas desta semana marcadas pra este exato dia e hora.
+                  const tasksForCell = scheduledTasks.filter(task => {
                      const taskDate = new Date(task.scheduled_at!)
-                     if (taskDate.getDate() !== date.getDate() || taskDate.getMonth() !== date.getMonth()) return null
+                     return taskDate.getDate() === date.getDate() &&
+                            taskDate.getMonth() === date.getMonth() &&
+                            taskDate.getHours() === hour
+                  })
 
-                     const client = clients.find(c => c.id === task.client_id)
-                     
-                     // Matemáticas exatas
-                     const hoursFromStart = (taskDate.getHours() + (taskDate.getMinutes() / 60)) - HOURS_START
-                     const topPx = hoursFromStart * PIXELS_PER_HOUR
-                     const heightPx = (task.estimated_minutes / 60) * PIXELS_PER_HOUR
+                  return (
+                     <div 
+                        key={`cell-${date.getTime()}-${hour}`} 
+                        className={`relative border-b border-border/40 hover:bg-accent/5 transition-colors p-1 flex flex-col gap-1 min-h-[80px] ${!isLastCol ? 'border-r border-border/50' : ''}`}
+                     >
+                        <DroppableSlot date={date} hour={hour} />
+                        
+                        {tasksForCell.map(task => {
+                           const client = clients.find(c => c.id === task.client_id)
+                           // The physical height proportional to estimated minutes.
+                           // Using as minHeight ensures the cell organically expands but retains proportions.
+                           const heightPx = (task.estimated_minutes / 60) * PIXELS_PER_HOUR
+                           return (
+                              <DraggableAgendaTask 
+                                key={task.id} 
+                                task={task} 
+                                heightPx={heightPx} 
+                                clientColor={client?.color}
+                                clientName={client?.name}
+                              />
+                           )
+                        })}
+                     </div>
+                  )
+               })}
 
-                     // Evitar sumir pra baixo do calendário 
-                     const safeTop = Math.min(topPx, totalGridHeight - heightPx)
-
-                     return (
-                       <DraggableAgendaTask 
-                         key={task.id} 
-                         task={task} 
-                         top={safeTop} 
-                         height={heightPx} 
-                         clientColor={client?.color}
-                         clientName={client?.name}
-                       />
-                     )
-                  })}
-
-               </div>
-             ))}
-
-           </div>
+             </React.Fragment>
+           ))}
+           
         </div>
       </div>
 
