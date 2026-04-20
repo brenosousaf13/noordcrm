@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, CheckSquare, FileText, CircleUser, LogOut, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
+import { LayoutDashboard, Users, CheckSquare, FileText, CircleUser, LogOut } from 'lucide-react'
 import { AgendaGrid } from '../components/dashboard/AgendaGrid'
 import { TasksBoard } from '../components/dashboard/TasksBoard'
 import { NotesPanel } from '../components/dashboard/NotesPanel'
@@ -14,11 +14,10 @@ export function Dashboard() {
   const { signOut, user } = useAuth()
   const { tasks, updateTask, addTask } = useTasks()
   const { clients } = useClients()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
   const [activeDragData, setActiveDragData] = useState<any>(null)
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen)
+  const [activeDragData, setActiveDragData] = useState<any>(null)
 
   const navItems = [
     { id: 'home', label: 'Home', icon: LayoutDashboard },
@@ -62,61 +61,86 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-bg-app flex overflow-hidden">
-      {/* Menu Lateral */}
-      <aside className={`${isSidebarOpen ? 'w-[220px]' : 'w-[64px]'} bg-bg-surface border-r border-border flex flex-col py-4 transition-all duration-200 overflow-hidden relative z-10 shrink-0`}>
-        {/* Toggle Nav */}
-        <div className="w-full flex items-center justify-center mb-4 px-2">
-           <button 
-             onClick={toggleSidebar}
-             className={`w-full flex items-center h-10 rounded-radius-sm text-text-secondary hover:bg-bg-surface-raised transition-colors ${isSidebarOpen ? 'justify-end px-3' : 'justify-center px-0'}`}
-           >
-             {isSidebarOpen ? <PanelLeftClose size={20} strokeWidth={1.5} className="shrink-0" /> : <PanelLeftOpen size={20} strokeWidth={1.5} className="shrink-0" />}
-           </button>
+      {/* Menu Lateral Estático Slim */}
+      <aside className="w-[100px] bg-bg-surface border-r border-border flex flex-col py-6 relative z-50 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+        
+        {/* Logo / Top spacer */}
+        <div className="w-full flex items-center justify-center mb-8 px-2">
+            <div className="w-10 h-10 bg-accent text-white rounded-radius-md flex items-center justify-center font-display font-black text-xl shadow-sm">
+               N
+            </div>
         </div>
 
-        <div className="flex-1 w-full space-y-2 px-2">
+        <div className="flex-1 w-full space-y-3 px-3">
           {navItems.map((item) => {
             const isActive = activeTab === item.id
             const Icon = item.icon
+            const isClients = item.id === 'clientes'
+
             return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center h-10 rounded-radius-sm transition-colors ${
-                  isSidebarOpen ? 'px-3' : 'justify-center px-0'
-                } ${
-                  isActive 
-                    ? 'bg-accent-light text-accent' 
-                    : 'text-text-secondary hover:bg-bg-surface-raised'
-                }`}
-              >
-                <Icon size={20} className="shrink-0" strokeWidth={1.5} />
-                <div className={`overflow-hidden transition-all duration-200 flex items-center ${isSidebarOpen ? 'w-[150px] opacity-100 ml-3' : 'w-0 opacity-0 ml-0'}`}>
-                  <span className={`whitespace-nowrap ${isActive ? 'font-semibold text-body' : 'font-medium text-body'}`}>
-                    {item.label}
+              <div key={item.id} className="relative group">
+                <button
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex flex-col items-center justify-center py-3 rounded-radius-md transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-accent-light text-accent shadow-sm ring-1 ring-accent/20' 
+                      : 'text-text-secondary hover:bg-bg-app hover:text-text-primary'
+                  }`}
+                >
+                  <Icon size={24} className="mb-1" strokeWidth={1.5} />
+                  <span className={`text-[10px] tracking-wide font-medium ${isActive ? 'font-bold' : ''}`}>
+                      {item.label}
                   </span>
-                </div>
-              </button>
+                </button>
+                
+                {/* Popover Hover Submenu para Clientes */}
+                {isClients && (
+                  <div className="absolute left-[calc(100%+8px)] top-0 w-[240px] bg-bg-surface border border-border shadow-modal rounded-radius-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 -translate-x-2 group-hover:translate-x-0 z-[100] flex flex-col overflow-hidden">
+                     <div className="px-4 py-3 bg-bg-surface-raised border-b border-border flex items-center justify-between">
+                        <span className="font-semibold text-small text-text-primary uppercase tracking-wide">Meus Clientes</span>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setActiveTab('clientes') /* Focar aba clientes foca a UI de gerenciar, não pedido, mas já resolve o +! */ }}
+                          className="bg-accent text-white p-1 rounded-sm hover:bg-accent-light hover:text-accent transition-colors"
+                          title="Novo Cliente"
+                        >
+                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        </button>
+                     </div>
+                     <div className="max-h-[300px] overflow-y-auto p-2 flex flex-col gap-1">
+                        {clients.map(c => (
+                           <button 
+                             key={c.id} 
+                             className="text-left px-3 py-2 text-small text-text-secondary hover:bg-bg-app hover:text-text-primary rounded-radius-sm transition-colors flex items-center gap-2 truncate"
+                           >
+                             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                             <span className="truncate">{c.name}</span>
+                           </button>
+                        ))}
+                        {clients.length === 0 && <span className="text-small text-text-tertiary p-2 text-center text-[11px]">Nenhum cliente aqui.</span>}
+                     </div>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>
 
         {/* User / Logout */}
-        <div className="w-full px-2 mt-auto border-t border-border pt-4 space-y-2">
-          <div className={`w-full flex items-center h-10 rounded-radius-sm text-text-secondary hover:bg-bg-surface-raised transition-colors cursor-pointer ${isSidebarOpen ? 'px-3' : 'justify-center px-0'}`}>
-            <CircleUser size={20} className="shrink-0" strokeWidth={1.5} />
-            <div className={`overflow-hidden transition-all duration-200 flex items-center ${isSidebarOpen ? 'w-[150px] opacity-100 ml-3' : 'w-0 opacity-0 ml-0'}`}>
-              <p className="text-small truncate">{user?.email}</p>
-            </div>
-          </div>
+        <div className="w-full px-3 mt-auto border-t border-border pt-6 space-y-3">
+          <button 
+            className={`w-full flex flex-col items-center justify-center p-2 rounded-radius-sm transition-all duration-200 text-text-secondary hover:bg-bg-app hover:text-text-primary`}
+            title={user?.email}
+          >
+            <CircleUser size={24} strokeWidth={1.5} className="mb-0.5" />
+            <span className="text-[9px] tracking-tight truncate w-full text-center max-w-full italic">{user?.email?.split('@')[0]}</span>
+          </button>
+          
           <button 
             onClick={signOut}
-            className={`w-full flex items-center h-10 rounded-radius-sm text-status-red hover:bg-[#FEE2E2] transition-colors ${isSidebarOpen ? 'px-3' : 'justify-center px-0'}`}
+            className={`w-full flex flex-col items-center justify-center py-2.5 rounded-radius-sm transition-all duration-200 text-status-red hover:bg-status-red/10 border border-transparent hover:border-status-red/30`}
           >
-            <LogOut size={20} className="shrink-0" strokeWidth={1.5} />
-            <div className={`overflow-hidden transition-all duration-200 flex items-center ${isSidebarOpen ? 'w-[150px] opacity-100 ml-3' : 'w-0 opacity-0 ml-0'}`}>
-              <span className="text-body font-medium whitespace-nowrap">Sair</span>
-            </div>
+            <LogOut size={22} strokeWidth={1.5} />
+            <span className="text-[10px] font-bold mt-1 uppercase tracking-wide">Sair</span>
           </button>
         </div>
       </aside>
