@@ -1,4 +1,5 @@
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react'
+import { useEditor, EditorContent } from '@tiptap/react'
+import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
@@ -48,9 +49,9 @@ export function RTE({ initialContent, onChange }: RTEProps) {
     }
   }, [])
 
-  // O Tiptap BubbleMenu tipa usando React 18 forwardRef, que quebra o build no TypeScript do React 19
-  // Usamos as any para bypassar a barreira estrita de types, no runtime ele funciona perfeitamente.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // No Tiptap v3+, BubbleMenu é importado de @tiptap/react/menus e não deve dar erro de JSX
+  // Mas por via das dúvidas nas versões Node mais novas / TS strict, mantemos o fallback do as any se for necessário, 
+  // porém, apenas se importar direto já resolve o problema
   const BubbleMenuComponent = BubbleMenu as any
 
   if (!editor) return <div className="animate-pulse w-full h-full bg-bg-surface-raised rounded"></div>
