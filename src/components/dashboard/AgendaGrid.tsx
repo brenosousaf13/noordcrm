@@ -3,6 +3,8 @@ import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { startOfWeek, addDays, setHours, format, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
+import { TaskModal } from './TaskModal'
+import { useTasks } from '../../hooks/useTasks'
 import type { Database } from '../../types/database.types'
 
 type Task = Database['public']['Tables']['tasks']['Row']
@@ -30,23 +32,28 @@ function DroppableSlot({ date, hour }: { date: Date, hour: number }) {
   )
 }
 
-function DraggableAgendaTask({ task, heightPx, clientColor, clientName }: { task: Task, heightPx?: number, clientColor?: string, clientName?: string }) {
+export function DraggableAgendaTask({ task, heightPx, clientColor, clientName, onEditClick }: { task: Task, heightPx?: number, clientColor?: string, clientName?: string, onEditClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: String(task.id),
-    data: { task }
+    data: { task, type: 'agenda_task', clientColor, clientName }
   })
   
   const style = {
     minHeight: heightPx ? `${Math.max(60, heightPx)}px` : undefined,
     ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {})
   }
+  
+  const isDone = task.status === 'Concluído'
 
   return (
     <div 
       ref={setNodeRef} 
       {...listeners} 
       {...attributes}
-      className={`w-full bg-bg-surface rounded-radius-sm shadow-raised border border-border border-l-4 p-2 flex flex-col cursor-grab pointer-events-auto hover:-translate-y-[1px] transition-transform relative z-20 shrink-0 ${isDragging ? 'opacity-50 z-50 cursor-grabbing' : ''}`}
+      onClick={(e) => {
+         onEditClick()
+      }}
+      className={`relative w-full z-20 shrink-0 rounded-radius-sm shadow-card border border-border border-l-4 p-2 cursor-grab transition-all group flex flex-col justify-start overflow-hidden bg-bg-surface hover:z-50 hover:shadow-raised ${isDragging ? 'opacity-50 z-50 cursor-grabbing' : ''} ${isDone ? 'opacity-50 grayscale select-none' : ''}`}
       style={{ ...style, borderLeftColor: clientColor || '#888888' }}
     >
       <div className={`flex justify-between items-start mb-1 ${(heightPx || 0) <= 50 ? 'h-full items-center' : ''}`}>
@@ -74,7 +81,9 @@ function DraggableAgendaTask({ task, heightPx, clientColor, clientName }: { task
 
 
 export function AgendaGrid({ tasks, clients }: { tasks: Task[], clients: Client[] }) {
+  const { updateTask } = useTasks()
   const [baseDate, setBaseDate] = useState(new Date()) 
+  const [editingTask, setEditingTask] = useState<Task | null | false>(false)
   
   // Computes Mon-Fri exactly relative to current base view
   const monday = startOfWeek(baseDate, { weekStartsOn: 1 })
@@ -204,6 +213,7 @@ export function AgendaGrid({ tasks, clients }: { tasks: Task[], clients: Client[
                                 heightPx={heightPx} 
                                 clientColor={client?.color}
                                 clientName={client?.name}
+                                onEditClick={() => setEditingTask(task)}
                               />
                            )
                         })}
@@ -216,6 +226,18 @@ export function AgendaGrid({ tasks, clients }: { tasks: Task[], clients: Client[
            
         </div>
       </div>
+
+      {editingTask !== false && editingTask !== null && (
+         <TaskModal 
+            task={editingTask} 
+            clients={clients} 
+            onClose={() => setEditingTask(false)} 
+            onSave={async (payload) => {
+               await updateTask(editingTask.id, payload)
+               setEditingTask(false)
+            }} 
+         />
+      )}
 
     </section>
   )
