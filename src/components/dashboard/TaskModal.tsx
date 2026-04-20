@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckSquare, X, Repeat } from 'lucide-react'
+import { X, Repeat } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database.types'
 import { format } from 'date-fns'
