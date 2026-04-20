@@ -79,7 +79,7 @@ export function DraggableAgendaTask({ task, heightPx, clientColor, clientName, o
 }
 
 
-export function AgendaGrid({ tasks, clients, updateTask }: { tasks: Task[], clients: Client[], updateTask: any }) {
+export function AgendaGrid({ tasks, clients, updateTask, removeTask }: { tasks: Task[], clients: Client[], updateTask: any, removeTask?: any }) {
   const [baseDate, setBaseDate] = useState(new Date()) 
   const [editingTask, setEditingTask] = useState<Task | null | false>(false)
   
@@ -230,6 +230,10 @@ export function AgendaGrid({ tasks, clients, updateTask }: { tasks: Task[], clie
             task={editingTask} 
             clients={clients} 
             onClose={() => setEditingTask(false)} 
+            onDelete={editingTask && removeTask ? async () => {
+               await removeTask(editingTask.id)
+               setEditingTask(false)
+            } : undefined}
             onSave={async (payload) => {
                await updateTask(editingTask.id, payload)
                setEditingTask(false)

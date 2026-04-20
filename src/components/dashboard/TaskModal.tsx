@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Repeat } from 'lucide-react'
+import { X, Repeat, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database.types'
 import { format } from 'date-fns'
@@ -12,10 +12,11 @@ interface TaskModalProps {
   task?: Task | null
   clients: Client[]
   onSave: (payload: Partial<Task>) => Promise<void>
+  onDelete?: () => Promise<void>
   onClose: () => void
 }
 
-export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
+export function TaskModal({ task, clients, onSave, onDelete, onClose }: TaskModalProps) {
   const teamUsers = [
     { id: 'brenosousaf13@gmail.com', name: 'Breno' },
     { id: 'lucassousaf01@gmail.com', name: 'Lucas' },
@@ -245,13 +246,30 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
              </div>
           </div>
 
-          <div className="px-6 py-4 border-t border-border bg-bg-surface-raised flex justify-end gap-3 sticky bottom-0 shrink-0 z-10">
-             <button type="button" onClick={onClose} className="px-5 py-2.5 text-body font-semibold text-text-secondary hover:text-text-primary hover:bg-bg-app rounded-radius-sm transition-colors border border-transparent hover:border-border">
-                {task ? 'Cancelar' : 'Descartar Entrada'}
-             </button>
-             <button type="submit" disabled={isUploading} className="px-6 py-2.5 text-body font-bold text-white bg-accent rounded-radius-sm shadow-[0_2px_10px_rgba(var(--accent),0.2)] hover:shadow-[0_4px_15px_rgba(var(--accent),0.3)] hover:-translate-y-[1px] active:translate-y-0 transition-all flex items-center justify-center gap-2 min-w-[200px]">
-                {isUploading ? <span className="animate-pulse">Salvando...</span> : task ? 'Salvar Alterações' : 'Puxar para Inbox'}
-             </button>
+          <div className="px-6 py-4 border-t border-border bg-bg-surface-raised flex items-center justify-between sticky bottom-0 shrink-0 z-10">
+             <div>
+               {task && onDelete && (
+                 <button 
+                   type="button" 
+                   onClick={async () => {
+                     if (confirm('Tem certeza que deseja apagar esta tarefa? Essa ação não pode ser desfeita.')) {
+                       await onDelete()
+                     }
+                   }}
+                   className="flex items-center gap-1.5 px-3 py-2 text-small font-semibold text-status-red hover:bg-status-red/10 rounded-radius-sm transition-colors border border-transparent hover:border-status-red/30 cursor-pointer"
+                 >
+                   <Trash2 size={14} strokeWidth={2} /> Apagar
+                 </button>
+               )}
+             </div>
+             <div className="flex gap-3">
+               <button type="button" onClick={onClose} className="px-5 py-2.5 text-body font-semibold text-text-secondary hover:text-text-primary hover:bg-bg-app rounded-radius-sm transition-colors border border-transparent hover:border-border">
+                  {task ? 'Cancelar' : 'Descartar Entrada'}
+               </button>
+               <button type="submit" disabled={isUploading} className="px-6 py-2.5 text-body font-bold text-white bg-accent rounded-radius-sm shadow-[0_2px_10px_rgba(var(--accent),0.2)] hover:shadow-[0_4px_15px_rgba(var(--accent),0.3)] hover:-translate-y-[1px] active:translate-y-0 transition-all flex items-center justify-center gap-2 min-w-[200px]">
+                  {isUploading ? <span className="animate-pulse">Salvando...</span> : task ? 'Salvar Alterações' : 'Puxar para Inbox'}
+               </button>
+             </div>
           </div>
        </form>
     </div>,

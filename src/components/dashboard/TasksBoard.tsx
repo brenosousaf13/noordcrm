@@ -125,7 +125,7 @@ export function DraggableTaskCard({ task, clientColor, clientName, onEditClick }
   )
 }
 
-export function TasksBoard({ tasks, clients, addTask, updateTask }: { tasks: Task[], clients: Client[], addTask?: any, updateTask: any }) {
+export function TasksBoard({ tasks, clients, addTask, updateTask, removeTask }: { tasks: Task[], clients: Client[], addTask?: any, updateTask: any, removeTask?: any }) {
   const [activeClientTab, setActiveClientTab] = useState<string>('todas')
 
   // --- V2 Super Filter States (LocalStorage) ---
@@ -316,6 +316,10 @@ export function TasksBoard({ tasks, clients, addTask, updateTask }: { tasks: Tas
             task={editingTask} 
             clients={clients} 
             onClose={() => setEditingTask(false)} 
+            onDelete={editingTask && removeTask ? async () => {
+               await removeTask(editingTask.id)
+               setEditingTask(false)
+            } : undefined}
             onSave={async (payload) => {
                if (editingTask === null) {
                   // Creating a new task
