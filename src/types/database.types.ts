@@ -61,6 +61,7 @@ export interface Database {
           start_date: string | null
           scheduled_at: string | null
           description: string | null
+          recurrence: string | null
           created_at: string
         }
         Insert: {
@@ -78,6 +79,7 @@ export interface Database {
           start_date?: string | null
           scheduled_at?: string | null
           description?: string | null
+          recurrence?: string | null
           created_at?: string
         }
         Update: {
@@ -95,6 +97,7 @@ export interface Database {
           start_date?: string | null
           scheduled_at?: string | null
           description?: string | null
+          recurrence?: string | null
           created_at?: string
         }
         Relationships: []

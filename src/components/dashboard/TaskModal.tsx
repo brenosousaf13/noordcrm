@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckSquare, X } from 'lucide-react'
+import { CheckSquare, X, Repeat } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database.types'
 import { format } from 'date-fns'
@@ -33,9 +33,9 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
   )
   const [draftAssignedTo, setDraftAssignedTo] = useState(task?.assigned_to || 'brenosousaf13@gmail.com')
   const [draftIsRecurrent, setDraftIsRecurrent] = useState(task?.is_recurrent || false)
+  const [draftRecurrence, setDraftRecurrence] = useState(task?.recurrence || 'weekly')
   const [draftFile, setDraftFile] = useState<File | null>(null)
-  const [draftStartDate, setDraftStartDate] = useState<Date | null>(task?.start_date ? new Date(task.start_date) : null)
-  const [draftDeadlineDate, setDraftDeadlineDate] = useState<Date | null>(task?.deadline ? new Date(task.deadline) : null)
+  const [draftDeadlineDate, setDraftDeadlineDate] = useState<string>(task?.deadline ? format(new Date(task.deadline), 'yyyy-MM-dd') : '')
   const [isUploading, setIsUploading] = useState(false)
 
   const handleSave = async (e: React.FormEvent) => {
@@ -72,11 +72,12 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
         is_done: draftStatus === 'Concluído',
         assigned_to: draftAssignedTo,
         is_recurrent: draftIsRecurrent,
+        recurrence: draftIsRecurrent ? draftRecurrence : null,
         file_url: fileUrl,
         // Only set schedule as null if CREATING. If editing, preserve the timeline!
         scheduled_at: task ? task.scheduled_at : null,
-        start_date: draftStartDate ? draftStartDate.toISOString() : null,
-        deadline: draftDeadlineDate ? draftDeadlineDate.toISOString() : null,
+        start_date: null,
+        deadline: draftDeadlineDate ? new Date(draftDeadlineDate + 'T00:00:00').toISOString() : null,
         description: draftDescription || null
       })
       onClose()
@@ -168,39 +169,78 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
 
                <div className="flex gap-4">
                  <div className="space-y-1.5 flex-1">
-                   <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Início</label>
-                   <input type="datetime-local" value={draftStartDate ? format(draftStartDate, "yyyy-MM-dd'T'HH:mm") : ''} onChange={e => setDraftStartDate(e.target.value ? new Date(e.target.value) : null)} className="w-full text-small px-3 py-2 bg-bg-surface border border-border rounded-radius-sm focus:border-accent outline-none text-text-secondary font-mono" />
+                   <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Prazo (Deadline)</label>
+                   <input type="date" value={draftDeadlineDate} onChange={e => setDraftDeadlineDate(e.target.value)} className="w-full text-small px-3 py-2 bg-bg-surface border border-border rounded-radius-sm focus:border-accent outline-none text-text-secondary font-mono" />
                  </div>
                  <div className="space-y-1.5 flex-1">
-                   <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Prazo (Deadline)</label>
-                   <input type="datetime-local" value={draftDeadlineDate ? format(draftDeadlineDate, "yyyy-MM-dd'T'HH:mm") : ''} onChange={e => setDraftDeadlineDate(e.target.value ? new Date(e.target.value) : null)} className="w-full text-small px-3 py-2 bg-bg-surface border border-border rounded-radius-sm focus:border-accent outline-none text-text-secondary font-mono" />
+                   <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Anexar Arquivo</label>
+                   <div className="relative bg-bg-app/30 border border-dashed border-border rounded-radius-sm hover:border-accent/40 transition-colors cursor-pointer group overflow-hidden">
+                      <input type="file" onChange={e => setDraftFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                      <div className="text-small text-text-primary px-3 py-[7px] font-medium w-full truncate flex items-center justify-between">
+                         <span className="truncate">{draftFile ? draftFile.name : (task?.file_url ? '🔗 Anexado' : 'Nenhum')}</span>
+                         <span className="text-[10px] text-accent font-medium opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">Selecionar</span>
+                      </div>
+                   </div>
                  </div>
                </div>
 
-               <div className="flex gap-4 mt-2 mb-2 items-center">
-                 <div className="flex-1 space-y-1.5 bg-bg-app/30 border border-dashed border-border p-3 rounded-radius-sm relative group overflow-hidden hover:border-accent/40 transition-colors cursor-pointer">
-                    <label className="text-[11px] font-bold text-text-tertiary uppercase tracking-wider mb-2 flex items-center justify-between w-full cursor-pointer">
-                       <span>{task?.file_url ? 'Substituir Anexo Original' : 'Anexar Arquivos (Opcional)'}</span>
-                       <span className="text-[10px] text-accent font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap overflow-hidden">Selecionar...</span>
-                    </label>
-                    <input type="file" onChange={e => setDraftFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                    <div className="text-small text-text-primary px-3 py-1.5 bg-bg-surface border border-border rounded-radius-sm font-medium w-full truncate">
-                       {draftFile ? draftFile.name : (task?.file_url ? 'Documento já anexado 🔗' : 'Nenhum documento anexado')}
+               {/* Recorrência estilo ClickUp */}
+               <div className="border border-border rounded-radius-sm overflow-hidden">
+                  <button 
+                    type="button"
+                    onClick={() => setDraftIsRecurrent(!draftIsRecurrent)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 transition-all cursor-pointer ${
+                      draftIsRecurrent 
+                        ? 'bg-accent/10 border-b border-accent/20' 
+                        : 'bg-bg-app/30 hover:bg-bg-app/50'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-radius-sm flex items-center justify-center transition-all ${
+                      draftIsRecurrent ? 'bg-accent text-white' : 'bg-bg-surface border border-border text-text-tertiary'
+                    }`}>
+                      <Repeat size={16} strokeWidth={2} />
                     </div>
-                 </div>
+                    <div className="flex-1 text-left">
+                       <span className={`text-body font-bold leading-tight ${
+                         draftIsRecurrent ? 'text-accent' : 'text-text-primary'
+                       }`}>Tarefa Recorrente</span>
+                       <p className="text-[10px] text-text-tertiary mt-0.5 leading-tight">
+                         {draftIsRecurrent ? 'Ativada — escolha a frequência abaixo' : 'Desativada — clique para ativar'}
+                       </p>
+                    </div>
+                    <div className={`w-10 h-[22px] rounded-full transition-all relative ${
+                      draftIsRecurrent ? 'bg-accent' : 'bg-border'
+                    }`}>
+                      <div className={`absolute top-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-all ${
+                        draftIsRecurrent ? 'left-[22px]' : 'left-[3px]'
+                      }`} />
+                    </div>
+                  </button>
 
-                 <div className="shrink-0 pt-4 px-4 cursor-pointer">
-                    <label className="flex items-center gap-2 cursor-pointer select-none group">
-                       <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${draftIsRecurrent ? 'bg-accent border-accent text-white' : 'bg-bg-surface border-border group-hover:border-text-tertiary text-transparent'}`}>
-                         <CheckSquare size={14} strokeWidth={3} fill="currentColor" className="opacity-100" />
-                       </div>
-                       <div className="flex flex-col cursor-pointer">
-                          <span className="text-body font-bold text-text-primary leading-tight">Tarefa Recorrente</span>
-                          <span className="text-[10px] text-text-tertiary mt-[2px] max-w-[150px] leading-[1.1]">Vai reaparecer semanalmente.</span>
-                       </div>
-                    </label>
-                    <input type="checkbox" className="hidden" checked={draftIsRecurrent} onChange={e => setDraftIsRecurrent(e.target.checked)} />
-                 </div>
+                  {draftIsRecurrent && (
+                    <div className="px-4 py-3 bg-bg-surface flex flex-wrap gap-2 animate-in slide-in-from-top-2 duration-200">
+                      {[
+                        { value: 'daily', label: 'Diária', icon: '📆' },
+                        { value: 'weekly', label: 'Semanal', icon: '📅' },
+                        { value: 'biweekly', label: 'Quinzenal', icon: '🗓️' },
+                        { value: 'monthly', label: 'Mensal', icon: '📋' },
+                        { value: 'custom', label: 'Personalizado', icon: '⚙️' },
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setDraftRecurrence(opt.value)}
+                          className={`px-3 py-1.5 rounded-radius-sm text-small font-medium transition-all border cursor-pointer ${
+                            draftRecurrence === opt.value
+                              ? 'bg-accent text-white border-accent shadow-sm'
+                              : 'bg-bg-surface border-border text-text-secondary hover:border-accent/40 hover:text-text-primary'
+                          }`}
+                        >
+                          <span className="mr-1">{opt.icon}</span> {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                </div>
              </div>
           </div>
