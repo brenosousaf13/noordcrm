@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { FileText, Search, Plus, Trash2, Clock, X, Home } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { FileText, Search, Plus, Trash2, Clock, X, Home, Maximize2, Minimize2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useNotes } from '../../hooks/useNotes'
@@ -15,6 +16,7 @@ export function NotesPanel({ clients }: { clients: Client[] }) {
   // V2 Tab Navigation State
   const [openedTabs, setOpenedTabs] = useState<string[]>([])
   const [activeTabId, setActiveTabId] = useState<string>('home') // 'home' or Note ID
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // Deep Search: Title OR JSON Content serialization
   const filtered = useMemo(() => {
@@ -167,7 +169,7 @@ export function NotesPanel({ clients }: { clients: Client[] }) {
 
          {/* TAB: ACTIVE NOTE EDITOR FULL WIDTH */}
          {activeTabId !== 'home' && activeNote && (
-            <div className="absolute inset-0 flex flex-col animate-in slide-in-from-right-4 duration-300">
+            <div className={`absolute inset-0 flex flex-col animate-in slide-in-from-right-4 duration-300 ${isExpanded ? 'opacity-0 pointer-events-none' : ''}`}>
                <div className="px-8 py-5 border-b border-border shrink-0 flex items-center justify-between bg-bg-surface-raised gap-4">
                   <div className="flex-1 max-w-2xl flex flex-col gap-2">
                      <input 
@@ -191,13 +193,22 @@ export function NotesPanel({ clients }: { clients: Client[] }) {
                      </div>
                   </div>
 
-                  <button 
-                     onClick={() => { if(window.confirm('Excluir esta nota permanentemente do sistema?')) { removeNote(activeNote.id); closeTab({ stopPropagation: () => {} } as any, activeNote.id) } }} 
-                     className="px-3 py-2 text-small font-bold text-status-red bg-status-red/5 hover:bg-status-red/10 border border-status-red/20 hover:border-status-red/40 rounded-radius-sm transition-colors flex items-center gap-2 shrink-0"
-                     title="Apagar Nota"
-                  >
-                     <Trash2 size={16}/> Excluir
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0 border-l border-border pl-4">
+                     <button 
+                        onClick={() => setIsExpanded(true)} 
+                        className="px-2 py-2 text-text-secondary hover:text-accent hover:bg-accent/10 rounded-radius-sm transition-colors flex items-center gap-2"
+                        title="Modo Foco (Expandir)"
+                     >
+                        <Maximize2 size={16}/>
+                     </button>
+                     <button 
+                        onClick={() => { if(window.confirm('Excluir esta nota permanentemente do sistema?')) { removeNote(activeNote.id); closeTab({ stopPropagation: () => {} } as any, activeNote.id) } }} 
+                        className="px-3 py-2 text-small font-bold text-status-red bg-status-red/5 hover:bg-status-red/10 border border-status-red/20 hover:border-status-red/40 rounded-radius-sm transition-colors flex items-center gap-2 ml-1"
+                        title="Apagar Nota"
+                     >
+                        <Trash2 size={16}/>
+                     </button>
+                  </div>
                </div>
                
                <div className="flex-1 overflow-hidden px-8 py-6 relative bg-bg-surface">
@@ -210,6 +221,39 @@ export function NotesPanel({ clients }: { clients: Client[] }) {
                   </div>
                </div>
             </div>
+         )}
+
+         {/* EXPANDED PORTAL FOR ACTIVE NOTE */}
+         {isExpanded && activeNote && createPortal(
+            <div className="fixed inset-0 z-[9999] bg-bg-app/80 backdrop-blur-sm p-6 lg:p-12 flex items-center justify-center animate-in fade-in duration-200">
+               <div className="absolute inset-0 z-0" onClick={() => setIsExpanded(false)} />
+               <div className="bg-bg-surface w-full max-w-5xl h-full rounded-radius-md shadow-modal flex flex-col border border-border relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="px-8 py-5 border-b border-border shrink-0 flex items-center justify-between bg-bg-surface-raised gap-4">
+                     <div className="flex-1">
+                        <input 
+                          type="text"
+                          className="text-display font-display font-bold bg-transparent border-none outline-none focus:ring-0 w-full text-text-primary placeholder:text-text-tertiary"
+                          value={activeNote.title}
+                          onChange={(e) => updateNote(activeNote.id, { title: e.target.value })}
+                          placeholder="Cabeçalho da sua ideia inovadora..."
+                        />
+                     </div>
+                     <button 
+                        onClick={() => setIsExpanded(false)} 
+                        className="p-2 text-text-secondary hover:text-text-primary hover:bg-bg-app border border-transparent rounded-radius-sm transition-colors"
+                        title="Sair do Modo Foco"
+                     >
+                        <Minimize2 size={20}/>
+                     </button>
+                  </div>
+                  <div className="flex-1 overflow-hidden px-12 py-8 relative">
+                     <div className="mx-auto w-full max-w-3xl h-full">
+                       <RTE key={activeNote.id} initialContent={activeNote.content} onChange={(json) => updateNote(activeNote.id, { content: json })} />
+                     </div>
+                  </div>
+               </div>
+            </div>,
+            document.body
          )}
 
          {/* TAB FALLBACK Se excluiu ou recarregou nulo */}

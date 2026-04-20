@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { CheckSquare, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database.types'
@@ -85,9 +86,17 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[100] bg-bg-app/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-in fade-in duration-200">
-       <form onSubmit={handleSave} className="bg-bg-surface rounded-radius-md shadow-modal border border-border w-full max-w-[650px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh]">
+  // Anti-scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = 'auto' }
+  }, [])
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-bg-app/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+       {/* Click fora para fechar */}
+       <div className="absolute inset-0" onClick={onClose} />
+       <form onSubmit={handleSave} className="bg-bg-surface rounded-radius-md shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-border w-full max-w-[650px] flex flex-col overflow-hidden animate-in zoom-in-90 duration-200 max-h-[90vh] relative z-10">
           
           <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-bg-surface-raised sticky top-0 shrink-0 z-10">
              <div>
@@ -194,6 +203,7 @@ export function TaskModal({ task, clients, onSave, onClose }: TaskModalProps) {
              </button>
           </div>
        </form>
-    </div>
+    </div>,
+    document.body
   )
 }

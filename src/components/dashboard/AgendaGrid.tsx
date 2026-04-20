@@ -132,7 +132,7 @@ export function AgendaGrid({ tasks, clients, updateTask }: { tasks: Task[], clie
   return (
     <section className="bg-bg-surface border border-border rounded-radius-md shadow-card flex flex-col h-full min-h-0 relative">
       {/* Header */}
-      <header className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0 bg-bg-surface-raised sticky top-0 z-30">
+      <header className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0 bg-bg-surface-raised sticky top-0 z-[60]">
         <div className="flex items-center gap-3">
           <CalendarDays size={20} className="text-accent" strokeWidth={2} />
           <h2 className="text-section text-text-primary uppercase tracking-wide font-bold">
@@ -157,7 +157,7 @@ export function AgendaGrid({ tasks, clients, updateTask }: { tasks: Task[], clie
       <div className="flex-1 overflow-y-auto flex flex-col relative bg-bg-app/30">
         
         {/* Days Header */}
-        <div className="flex border-b border-border sticky top-0 bg-bg-surface z-20 shrink-0 shadow-[0_1px_0_0_var(--border)]">
+        <div className="flex border-b border-border sticky top-0 bg-bg-surface z-[50] shrink-0 shadow-[0_1px_0_0_var(--border)]">
           <div className="w-12 shrink-0 border-r border-border"></div>
           {weekDays.map((date) => (
             <div key={date.toISOString()} className="flex-1 text-center py-2 flex flex-col items-center justify-center border-r border-border last:border-r-0">
