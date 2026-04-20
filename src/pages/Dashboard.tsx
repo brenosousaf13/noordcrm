@@ -17,8 +17,6 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState('home')
   const [activeDragData, setActiveDragData] = useState<any>(null)
 
-  const [activeDragData, setActiveDragData] = useState<any>(null)
-
   const navItems = [
     { id: 'home', label: 'Home', icon: LayoutDashboard },
     { id: 'clientes', label: 'Clientes', icon: Users },

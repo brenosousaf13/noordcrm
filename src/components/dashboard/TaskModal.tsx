@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { CheckSquare, Paperclip, Zap, X } from 'lucide-react'
+import { useState } from 'react'
+import { CheckSquare, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database.types'
 import { format } from 'date-fns'

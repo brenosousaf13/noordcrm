@@ -54,7 +54,7 @@ export function DraggableTaskCard({ task, clientColor, clientName, onEditClick }
       ref={setNodeRef} 
       {...listeners} 
       {...attributes}
-      onClick={(e) => {
+      onClick={() => {
          // O DND blocka clicks se não cuidarmos, mas ouvintes de evento resolvem.
          onEditClick()
       }}

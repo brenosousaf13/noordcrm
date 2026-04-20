@@ -50,7 +50,7 @@ export function DraggableAgendaTask({ task, heightPx, clientColor, clientName, o
       ref={setNodeRef} 
       {...listeners} 
       {...attributes}
-      onClick={(e) => {
+      onClick={() => {
          onEditClick()
       }}
       className={`relative w-full z-20 shrink-0 rounded-radius-sm shadow-card border border-border border-l-4 p-2 cursor-grab transition-all group flex flex-col justify-start overflow-hidden bg-bg-surface hover:z-50 hover:shadow-raised ${isDragging ? 'opacity-50 z-50 cursor-grabbing' : ''} ${isDone ? 'opacity-50 grayscale select-none' : ''}`}
