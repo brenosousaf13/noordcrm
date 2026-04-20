@@ -152,18 +152,18 @@ export function Dashboard() {
              
              {/* Linha Superior: Agenda (Full Width, ~45% Altura) */}
              <div className="h-[45%] shrink-0 flex flex-col relative w-full min-h-0">
-                <AgendaGrid tasks={tasks} clients={clients} />
+                <AgendaGrid tasks={tasks} clients={clients} updateTask={updateTask} />
              </div>
 
              {/* Linha Inferior: Tarefas (Lado Esquerdo) + Notas (Lado Direito) */}
              <div className="flex-1 min-h-0 flex gap-5 w-full relative">
                
                <div className="flex-[1.25] min-w-0 flex flex-col h-full relative">
-                  <TasksBoard tasks={tasks} clients={clients} addTask={addTask} />
+                  <TasksBoard tasks={tasks} clients={clients} addTask={addTask} updateTask={updateTask} />
                </div>
 
                <div className="flex-1 min-w-0 flex flex-col h-full relative">
-                  <NotesPanel />
+                  <NotesPanel clients={clients} />
                </div>
 
              </div>

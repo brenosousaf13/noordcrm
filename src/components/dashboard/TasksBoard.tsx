@@ -5,7 +5,6 @@ import type { Database } from '../../types/database.types'
 import { format, isToday, isTomorrow, isPast, endOfWeek, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TaskModal } from './TaskModal'
-import { useTasks } from '../../hooks/useTasks'
 
 type Task = Database['public']['Tables']['tasks']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
@@ -126,8 +125,7 @@ export function DraggableTaskCard({ task, clientColor, clientName, onEditClick }
   )
 }
 
-export function TasksBoard({ tasks, clients, addTask }: { tasks: Task[], clients: Client[], addTask?: any }) {
-  const { updateTask } = useTasks()
+export function TasksBoard({ tasks, clients, addTask, updateTask }: { tasks: Task[], clients: Client[], addTask?: any, updateTask: any }) {
   const [activeClientTab, setActiveClientTab] = useState<string>('todas')
 
   // --- V2 Super Filter States (LocalStorage) ---

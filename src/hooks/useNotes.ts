@@ -19,7 +19,7 @@ export function useNotes() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotes()
     
-    const channel = supabase.channel('notes_changes')
+    const channel = supabase.channel(`notes_changes_${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => {
         fetchNotes()
       })

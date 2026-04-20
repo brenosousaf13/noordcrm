@@ -1,14 +1,13 @@
 import { useState, useMemo } from 'react'
 import { FileText, Search, Plus, Trash2, Clock, X, Home } from 'lucide-react'
 import { useNotes } from '../../hooks/useNotes'
-import { useClients } from '../../hooks/useClients'
 import { RTE } from '../notes/RTE'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import type { Database } from '../../types/database.types'
 
-export function NotesPanel() {
+type Client = Database['public']['Tables']['clients']['Row']
+
+export function NotesPanel({ clients }: { clients: Client[] }) {
   const { notes, loading, addNote, updateNote, removeNote } = useNotes()
-  const { clients } = useClients()
   const [searchTerm, setSearchTerm] = useState('')
   
   // V2 Tab Navigation State

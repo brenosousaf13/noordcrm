@@ -20,7 +20,7 @@ export function useClients() {
     fetchClients()
     
     // Assinatura do Realtime (WebSockets)
-    const channel = supabase.channel(`clients_changes_${Date.now()}`)
+    const channel = supabase.channel(`clients_changes_${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
         fetchClients()
       })

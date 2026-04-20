@@ -4,7 +4,6 @@ import { startOfWeek, addDays, setHours, format, addWeeks, subWeeks } from 'date
 import { ptBR } from 'date-fns/locale'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { TaskModal } from './TaskModal'
-import { useTasks } from '../../hooks/useTasks'
 import type { Database } from '../../types/database.types'
 
 type Task = Database['public']['Tables']['tasks']['Row']
@@ -80,8 +79,7 @@ export function DraggableAgendaTask({ task, heightPx, clientColor, clientName, o
 }
 
 
-export function AgendaGrid({ tasks, clients }: { tasks: Task[], clients: Client[] }) {
-  const { updateTask } = useTasks()
+export function AgendaGrid({ tasks, clients, updateTask }: { tasks: Task[], clients: Client[], updateTask: any }) {
   const [baseDate, setBaseDate] = useState(new Date()) 
   const [editingTask, setEditingTask] = useState<Task | null | false>(false)
   

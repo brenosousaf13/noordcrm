@@ -20,7 +20,7 @@ export function useTasks() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTasks()
     
-    const channel = supabase.channel(`tasks_changes_${Date.now()}`)
+    const channel = supabase.channel(`tasks_changes_${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         fetchTasks()
       })
