@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, X, CheckSquare } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { startOfWeek, addDays, setHours, format, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
@@ -74,7 +74,7 @@ function DraggableAgendaTask({ task, top, height, clientColor, clientName }: { t
 }
 
 
-export function AgendaGrid({ tasks, clients, addTask }: { tasks: Task[], clients: Client[], addTask: any }) {
+export function AgendaGrid({ tasks, clients }: { tasks: Task[], clients: Client[] }) {
   const [baseDate, setBaseDate] = useState(new Date()) 
   
   // Computes Mon-Fri exactly relative to current base view

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { CheckSquare, Paperclip, Clock, CalendarDays, Zap, Plus, X } from 'lucide-react'
+import { CheckSquare, Paperclip, Clock, Zap, Plus, X } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database.types'
