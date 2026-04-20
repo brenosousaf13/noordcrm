@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Syne", sans-serif;
+  --font-sans: "DM Sans", sans-serif;
+  --font-mono: "DM Mono", monospace;
+
+  --color-bg-app: #F0F2F5;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-surface-raised: #F8F9FA;
+  
+  --color-border: #E4E7EC;
+  --color-border-strong: #CBD2DA;
+  
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-tertiary: #9CA3AF;
+  
+  --color-accent: #1A9E6E;
+  --color-accent-light: #E8F7F1;
+  --color-accent-hover: #158A5E;
+  
+  --color-status-red: #EF4444;
+  --color-status-orange: #F97316;
+  --color-status-yellow: #EAB308;
+  --color-status-blue: #3B82F6;
+  --color-status-gray: #D1D5DB;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-raised: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-modal: 0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+@layer base {
+  :root {
+    --bg-app: #F0F2F5;
+    --bg-surface: #FFFFFF;
+    --bg-surface-raised: #F8F9FA;
+    --border: #E4E7EC;
+    --border-strong: #CBD2DA;
+    --text-primary: #111827;
+    --text-secondary: #6B7280;
+    --text-tertiary: #9CA3AF;
+    --accent: #1A9E6E;
+    --accent-light: #E8F7F1;
+    --accent-hover: #158A5E;
+    
+    --red: #EF4444;
+    --orange: #F97316;
+    --yellow: #EAB308;
+    --blue: #3B82F6;
+    --gray-muted: #D1D5DB;
+    
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-raised: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-modal: 0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+  }
+
+  body {
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .text-display {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .text-section {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .text-body-lg {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .text-body {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 400;
+  }
+  .text-small {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .text-mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .text-label {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+  }
+}
+
+/* --- TIPTAP EDITOR PROSE FIXES --- */
+@layer utilities {
+  .ProseMirror {
+    outline: none;
+    min-height: 100%;
+  }
+  .ProseMirror h1 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    line-height: 1.2;
+  }
+  .ProseMirror h2 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    color: var(--text-primary);
+  }
+  .ProseMirror ul {
+    list-style-type: disc;
+    padding-left: 1.5em;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    color: var(--text-secondary);
+  }
+  .ProseMirror ol {
+    list-style-type: decimal;
+    padding-left: 1.5em;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    color: var(--text-secondary);
+  }
+  .ProseMirror li {
+    margin-bottom: 0.25em;
+  }
+  .ProseMirror p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+  .ProseMirror p.is-editor-empty:first-child::before {
+     content: attr(data-placeholder);
+     float: left;
+     color: var(--text-tertiary);
+     font-style: italic;
+     height: 0;
+     pointer-events: none;
+  }
+}
