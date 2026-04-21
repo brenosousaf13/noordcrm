@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { FileText, Search, Plus, Trash2, Clock, X, Home, Maximize2, Minimize2 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -9,7 +9,7 @@ import type { Database } from '../../types/database.types'
 
 type Client = Database['public']['Tables']['clients']['Row']
 
-export function NotesPanel({ clients }: { clients: Client[] }) {
+export function NotesPanel({ clients, newNoteTrigger }: { clients: Client[], newNoteTrigger?: number }) {
   const { notes, loading, addNote, updateNote, removeNote } = useNotes()
   const [searchTerm, setSearchTerm] = useState('')
   
@@ -58,6 +58,10 @@ export function NotesPanel({ clients }: { clients: Client[] }) {
   }
 
   const activeNote = useMemo(() => notes.find(n => n.id === activeTabId), [notes, activeTabId])
+
+  useEffect(() => {
+    if (newNoteTrigger && newNoteTrigger > 0) handleAddNew()
+  }, [newNoteTrigger])
 
   return (
     <section className="bg-bg-surface border border-border rounded-radius-md shadow-card flex flex-col h-full min-h-0 relative z-10 w-full overflow-hidden">
