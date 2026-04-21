@@ -78,7 +78,7 @@ export function TaskModal({ task, clients, onSave, onDelete, onClose }: TaskModa
         // Only set schedule as null if CREATING. If editing, preserve the timeline!
         scheduled_at: task ? task.scheduled_at : null,
         start_date: null,
-        deadline: draftDeadlineDate ? new Date(draftDeadlineDate + 'T00:00:00').toISOString() : null,
+        deadline: draftDeadlineDate || null,
         description: draftDescription || null
       })
       onClose()

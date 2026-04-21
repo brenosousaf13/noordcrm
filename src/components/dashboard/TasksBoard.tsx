@@ -25,7 +25,8 @@ export function DraggableTaskCard({ task, clientColor, clientName, onEditClick }
   let deadlineLabel = null
   let isLate = false
 
-  const refDate = task.deadline ? new Date(task.deadline) : task.start_date ? new Date(task.start_date) : null
+  const parseLocalDate = (d: string) => new Date(d.includes('T') ? d : d + 'T00:00:00')
+  const refDate = task.deadline ? parseLocalDate(task.deadline) : task.start_date ? parseLocalDate(task.start_date) : null
 
   if (refDate) {
     if (isToday(refDate)) deadlineLabel = `ALERTA HOJE às ${format(refDate, 'HH:mm')}`
@@ -166,7 +167,8 @@ export function TasksBoard({ tasks, clients, addTask, updateTask, removeTask }: 
       
       // 3. Filtros de Data V2 (Hoje, Amanhã, Semana, Calendário)
       if (filterDateMode !== 'todos') {
-         const d = t.deadline ? new Date(t.deadline) : t.start_date ? new Date(t.start_date) : null
+         const parseLocalDate = (s: string) => new Date(s.includes('T') ? s : s + 'T00:00:00')
+         const d = t.deadline ? parseLocalDate(t.deadline) : t.start_date ? parseLocalDate(t.start_date) : null
          if (!d) return false // Se não tem data nenhuma e o filtro pede data, some!
          
          if (filterDateMode === 'hoje') {
@@ -178,7 +180,7 @@ export function TasksBoard({ tasks, clients, addTask, updateTask, removeTask }: 
             const end = endOfWeek(new Date(), { weekStartsOn: 1 })
             if (d < start || d > end) return false
          } else if (filterDateMode === 'custom' && filterDateCustom) {
-            const customD = new Date(filterDateCustom)
+            const customD = new Date(filterDateCustom.includes('T') ? filterDateCustom : filterDateCustom + 'T00:00:00')
             if (d.getDate() !== customD.getDate() || d.getMonth() !== customD.getMonth() || d.getFullYear() !== customD.getFullYear()) return false
          }
       }
@@ -192,8 +194,9 @@ export function TasksBoard({ tasks, clients, addTask, updateTask, removeTask }: 
        if (!aDone && bDone) return -1
        
        // Date Sort
-       const dValA = a.deadline ? new Date(a.deadline).getTime() : a.start_date ? new Date(a.start_date).getTime() : 0
-       const dValB = b.deadline ? new Date(b.deadline).getTime() : b.start_date ? new Date(b.start_date).getTime() : 0
+       const parseD = (s: string) => new Date(s.includes('T') ? s : s + 'T00:00:00').getTime()
+       const dValA = a.deadline ? parseD(a.deadline) : a.start_date ? parseD(a.start_date) : 0
+       const dValB = b.deadline ? parseD(b.deadline) : b.start_date ? parseD(b.start_date) : 0
        
        // Priority Sort
        if (!dValA && dValB) return 1
