@@ -1,5 +1,6 @@
 import { useState, useMemo, Fragment } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { CalendarDays, ChevronLeft, ChevronRight, X, Maximize2, Minimize2 } from 'lucide-react'
 import { startOfWeek, addDays, setHours, format, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
@@ -124,117 +125,136 @@ export function AgendaGrid({ tasks, clients, updateTask, removeTask, currentUser
   const today = () => setBaseDate(new Date())
 
   const totalGridHeight = HOURS.length * PIXELS_PER_HOUR
+  const [isExpanded, setIsExpanded] = useState(false)
 
-  return (
-    <section className="bg-bg-surface border border-border rounded-radius-md shadow-card flex flex-col h-full min-h-0 relative">
-      <header className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0 bg-bg-surface-raised sticky top-0 z-[60]">
-        <div className="flex items-center gap-3">
-          <CalendarDays size={20} className="text-accent" strokeWidth={2} />
-          <h2 className="text-section text-text-primary uppercase tracking-wide font-bold">
-            {format(weekDays[0], "d 'de' MMM", { locale: ptBR })} — {format(weekDays[4], "d 'de' MMM", { locale: ptBR })}
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-           <button onClick={today} className="text-small font-medium text-text-secondary hover:text-text-primary px-3 py-1 bg-bg-app border border-border rounded-radius-sm transition-colors">
-              Hoje
-           </button>
-           <div className="w-px h-4 bg-border" />
-           <button onClick={prevWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
-             <ChevronLeft size={18} strokeWidth={1.5} />
-           </button>
-           <button onClick={nextWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
-             <ChevronRight size={18} strokeWidth={1.5} />
-           </button>
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto flex flex-col relative bg-bg-app/30">
-
-        <div className="flex border-b border-border sticky top-0 bg-bg-surface z-[50] shrink-0 shadow-[0_1px_0_0_var(--border)]">
-          <div className="w-12 shrink-0 border-r border-border"></div>
-          {weekDays.map((date) => (
-            <div key={date.toISOString()} className="flex-1 text-center py-2 flex flex-col items-center justify-center border-r border-border last:border-r-0">
-              <span className="text-label text-text-tertiary uppercase">{format(date, 'eee', { locale: ptBR })}</span>
-              <span className="text-body-lg font-bold text-text-primary leading-tight">{format(date, 'd')}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex-1 grid grid-cols-[48px_repeat(5,minmax(0,1fr))]" style={{ minHeight: totalGridHeight }}>
-
-           {HOURS.map((hour) => (
-             <Fragment key={hour}>
-
-               <div className="border-r border-b border-transparent bg-bg-surface opacity-90 z-10 relative flex justify-center shrink-0" style={{ minHeight: PIXELS_PER_HOUR }}>
-                  <span className="text-mono text-[10px] text-text-tertiary absolute -top-[9px] right-2 bg-bg-surface px-0.5 leading-none">
-                     {hour.toString().padStart(2, '0')}:00
-                  </span>
-               </div>
-
-               {weekDays.map((date, colIdx) => {
-                  const isLastCol = colIdx === 4
-
-                  const tasksForCell = scheduledTasks.filter(task => {
-                     const taskDate = new Date(task.scheduled_at!)
-                     return taskDate.getDate() === date.getDate() &&
-                            taskDate.getMonth() === date.getMonth() &&
-                            taskDate.getHours() === hour
-                  })
-
-                  return (
-                     <div
-                        key={`cell-${date.getTime()}-${hour}`}
-                        className={`relative border-b border-border/40 hover:bg-accent/5 transition-colors p-1 flex flex-col gap-1 ${!isLastCol ? 'border-r border-border/50' : ''}`}
-                        style={{ minHeight: PIXELS_PER_HOUR }}
-                     >
-                        <DroppableSlot date={date} hour={hour} />
-
-                        {tasksForCell.map(task => {
-                           const client = clients.find(c => c.id === task.client_id)
-                           const heightPx = (task.estimated_minutes / 60) * PIXELS_PER_HOUR
-                           const taskId = String(task.id)
-                           const isGhost = taskId.includes('-ghost-')
-                           return (
-                              <DraggableAgendaTask
-                                key={task.id}
-                                task={task}
-                                heightPx={heightPx}
-                                clientColor={client?.color}
-                                clientName={client?.name}
-                                onEditClick={() => setEditingTask(task)}
-                                onUnschedule={!isGhost ? async () => {
-                                  try { await updateTask(taskId, { scheduled_at: null }) } catch(e) { console.error(e) }
-                                } : undefined}
-                              />
-                           )
-                        })}
-                     </div>
-                  )
-               })}
-
-             </Fragment>
-           ))}
-
-        </div>
+  const gridContent = (
+    <div className="flex-1 overflow-y-auto flex flex-col relative bg-bg-app/30">
+      <div className="flex border-b border-border sticky top-0 bg-bg-surface z-[50] shrink-0 shadow-[0_1px_0_0_var(--border)]">
+        <div className="w-12 shrink-0 border-r border-border"></div>
+        {weekDays.map((date) => (
+          <div key={date.toISOString()} className="flex-1 text-center py-2 flex flex-col items-center justify-center border-r border-border last:border-r-0">
+            <span className="text-label text-text-tertiary uppercase">{format(date, 'eee', { locale: ptBR })}</span>
+            <span className="text-body-lg font-bold text-text-primary leading-tight">{format(date, 'd')}</span>
+          </div>
+        ))}
       </div>
 
-      {editingTask !== false && editingTask !== null && (
-         <TaskModal
-            task={editingTask}
-            clients={clients}
-            currentUserEmail={currentUserEmail}
-            onClose={() => setEditingTask(false)}
-            onDelete={editingTask && removeTask ? async () => {
-               await removeTask(editingTask.id)
-               setEditingTask(false)
-            } : undefined}
-            onSave={async (payload) => {
-               await updateTask(editingTask.id, payload)
-               setEditingTask(false)
-            }}
-         />
-      )}
+      <div className="flex-1 grid grid-cols-[48px_repeat(5,minmax(0,1fr))]" style={{ minHeight: totalGridHeight }}>
+        {HOURS.map((hour) => (
+          <Fragment key={hour}>
+            <div className="border-r border-b border-transparent bg-bg-surface opacity-90 z-10 relative flex justify-center shrink-0" style={{ minHeight: PIXELS_PER_HOUR }}>
+              <span className="text-mono text-[10px] text-text-tertiary absolute -top-[9px] right-2 bg-bg-surface px-0.5 leading-none">
+                {hour.toString().padStart(2, '0')}:00
+              </span>
+            </div>
 
-    </section>
+            {weekDays.map((date, colIdx) => {
+              const isLastCol = colIdx === 4
+              const tasksForCell = scheduledTasks.filter(task => {
+                const taskDate = new Date(task.scheduled_at!)
+                return taskDate.getDate() === date.getDate() &&
+                       taskDate.getMonth() === date.getMonth() &&
+                       taskDate.getHours() === hour
+              })
+
+              return (
+                <div
+                  key={`cell-${date.getTime()}-${hour}`}
+                  className={`relative border-b border-border/40 hover:bg-accent/5 transition-colors p-1 flex flex-col gap-1 ${!isLastCol ? 'border-r border-border/50' : ''}`}
+                  style={{ minHeight: PIXELS_PER_HOUR }}
+                >
+                  <DroppableSlot date={date} hour={hour} />
+                  {tasksForCell.map(task => {
+                    const client = clients.find(c => c.id === task.client_id)
+                    const heightPx = (task.estimated_minutes / 60) * PIXELS_PER_HOUR
+                    const taskId = String(task.id)
+                    const isGhost = taskId.includes('-ghost-')
+                    return (
+                      <DraggableAgendaTask
+                        key={task.id}
+                        task={task}
+                        heightPx={heightPx}
+                        clientColor={client?.color}
+                        clientName={client?.name}
+                        onEditClick={() => setEditingTask(task)}
+                        onUnschedule={!isGhost ? async () => {
+                          try { await updateTask(taskId, { scheduled_at: null }) } catch(e) { console.error(e) }
+                        } : undefined}
+                      />
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  )
+
+  const header = (onExpand: () => void, expandIcon: React.ReactNode) => (
+    <header className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0 bg-bg-surface-raised sticky top-0 z-[60]">
+      <div className="flex items-center gap-3">
+        <CalendarDays size={20} className="text-accent" strokeWidth={2} />
+        <h2 className="text-section text-text-primary uppercase tracking-wide font-bold">
+          {format(weekDays[0], "d 'de' MMM", { locale: ptBR })} — {format(weekDays[4], "d 'de' MMM", { locale: ptBR })}
+        </h2>
+      </div>
+      <div className="flex items-center gap-2">
+        <button onClick={today} className="text-small font-medium text-text-secondary hover:text-text-primary px-3 py-1 bg-bg-app border border-border rounded-radius-sm transition-colors">
+          Hoje
+        </button>
+        <div className="w-px h-4 bg-border" />
+        <button onClick={prevWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
+          <ChevronLeft size={18} strokeWidth={1.5} />
+        </button>
+        <button onClick={nextWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
+          <ChevronRight size={18} strokeWidth={1.5} />
+        </button>
+        <div className="w-px h-4 bg-border" />
+        <button onClick={onExpand} className="text-text-secondary hover:text-accent hover:bg-accent/10 p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer" title={isExpanded ? 'Recolher agenda' : 'Expandir agenda'}>
+          {expandIcon}
+        </button>
+      </div>
+    </header>
+  )
+
+  const modal = editingTask !== false && editingTask !== null && (
+    <TaskModal
+      task={editingTask}
+      clients={clients}
+      currentUserEmail={currentUserEmail}
+      onClose={() => setEditingTask(false)}
+      onDelete={editingTask && removeTask ? async () => {
+        await removeTask(editingTask.id)
+        setEditingTask(false)
+      } : undefined}
+      onSave={async (payload) => {
+        await updateTask(editingTask.id, payload)
+        setEditingTask(false)
+      }}
+    />
+  )
+
+  return (
+    <>
+      <section className="bg-bg-surface border border-border rounded-radius-md shadow-card flex flex-col h-full min-h-0 relative">
+        {header(() => setIsExpanded(true), <Maximize2 size={16} strokeWidth={1.5} />)}
+        {gridContent}
+        {modal}
+      </section>
+
+      {isExpanded && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-bg-app/80 backdrop-blur-sm p-6 flex items-center justify-center animate-in fade-in duration-200">
+          <div className="absolute inset-0 z-0" onClick={() => setIsExpanded(false)} />
+          <div className="bg-bg-surface w-full max-w-[95vw] h-[90vh] rounded-radius-md shadow-modal flex flex-col border border-border relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+            {header(() => setIsExpanded(false), <Minimize2 size={16} strokeWidth={1.5} />)}
+            {gridContent}
+            {modal}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
