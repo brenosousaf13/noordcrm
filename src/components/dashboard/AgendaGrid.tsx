@@ -1,5 +1,4 @@
 import { useState, useMemo, Fragment } from 'react'
-import { createPortal } from 'react-dom'
 import { CalendarDays, ChevronLeft, ChevronRight, X, Maximize2, Minimize2 } from 'lucide-react'
 import { startOfWeek, addDays, format, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -10,22 +9,20 @@ import type { Database } from '../../types/database.types'
 type Task = Database['public']['Tables']['tasks']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
 
-// Slots de 30 em 30 minutos: 7:00 → 23:30 = 34 slots
-const PIXELS_PER_SLOT = 50 // 30min = 50px → 60min = 100px
-const SLOTS: { hour: number; minute: number }[] = []
-for (let h = 7; h <= 23; h++) {
-  SLOTS.push({ hour: h, minute: 0 })
-  if (h < 23) SLOTS.push({ hour: h, minute: 30 })
+const HOURS_START = 7
+const HOURS = Array.from({ length: 17 }, (_, i) => i + HOURS_START) // 7h a 23h
+const PIXELS_PER_SLOT = 50  // cada half-hour row = 50px → 60min = 100px
+
+// Gera o ID do slot exatamente como o Dashboard vai extrair o timestamp
+function makeSlotId(date: Date, hour: number, minute: number) {
+  const d = new Date(date)
+  d.setHours(hour, minute, 0, 0)
+  return `AGENDA_SLOT_${d.toISOString()}`
 }
-// Último slot: 23:00 e 23:30
-SLOTS.push({ hour: 23, minute: 30 })
 
 function DroppableSlot({ date, hour, minute }: { date: Date; hour: number; minute: number }) {
-  const slotDate = new Date(date)
-  slotDate.setHours(hour, minute, 0, 0)
-  const id = `AGENDA_SLOT_${slotDate.toISOString()}`
+  const id = makeSlotId(date, hour, minute)
   const { isOver, setNodeRef } = useDroppable({ id })
-
   return (
     <div
       ref={setNodeRef}
@@ -35,19 +32,19 @@ function DroppableSlot({ date, hour, minute }: { date: Date; hour: number; minut
 }
 
 export function DraggableAgendaTask({
-  task, heightPx, clientColor, clientName, onEditClick, onUnschedule
+  task, heightPx, clientColor, clientName, onEditClick, onUnschedule,
 }: {
   task: Task; heightPx?: number; clientColor?: string; clientName?: string
   onEditClick: () => void; onUnschedule?: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: String(task.id),
-    data: { task, type: 'agenda_task', clientColor, clientName }
+    data: { task, type: 'agenda_task', clientColor, clientName },
   })
 
   const style = {
     height: heightPx ? `${Math.max(24, heightPx)}px` : undefined,
-    ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {})
+    ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {}),
   }
 
   const isDone = task.status === 'Concluído'
@@ -65,9 +62,10 @@ export function DraggableAgendaTask({
       <div className={`flex justify-between ${isCompact ? 'items-center h-full' : 'items-start'}`}>
         <div className={`flex flex-col overflow-hidden leading-tight flex-1 ${isCompact ? 'justify-center' : ''}`}>
           <span className="text-body-lg font-medium truncate">{task.title}</span>
-          {!isCompact && clientName && <span className="text-[10px] text-text-secondary truncate mt-[2px]">{clientName}</span>}
+          {!isCompact && clientName && (
+            <span className="text-[10px] text-text-secondary truncate mt-[2px]">{clientName}</span>
+          )}
         </div>
-
         <div className="flex items-center gap-1 shrink-0 ml-1">
           {!isCompact && (
             <div className="flex flex-col gap-[3px] mt-1 items-end opacity-80 shrink-0">
@@ -93,7 +91,9 @@ export function DraggableAgendaTask({
 }
 
 
-export function AgendaGrid({ tasks, clients, updateTask, removeTask, currentUserEmail }: {
+export function AgendaGrid({
+  tasks, clients, updateTask, removeTask, currentUserEmail,
+}: {
   tasks: Task[]; clients: Client[]; updateTask: any; removeTask?: any; currentUserEmail?: string
 }) {
   const [baseDate, setBaseDate] = useState(new Date())
@@ -105,7 +105,6 @@ export function AgendaGrid({ tasks, clients, updateTask, removeTask, currentUser
 
   const scheduledTasks = useMemo(() => {
     const visibleTasks: Task[] = []
-
     tasks.forEach(t => {
       if (!t.scheduled_at) return
       const taskDate = new Date(t.scheduled_at)
@@ -123,7 +122,7 @@ export function AgendaGrid({ tasks, clients, updateTask, removeTask, currentUser
             ...t,
             id: `${t.id}-ghost-${matchingDay.getTime()}`,
             scheduled_at: virtualDate.toISOString(),
-            status: 'A fazer'
+            status: 'A fazer',
           } as any)
         }
       }
@@ -133,162 +132,201 @@ export function AgendaGrid({ tasks, clients, updateTask, removeTask, currentUser
 
   const nextWeek = () => setBaseDate(addWeeks(baseDate, 1))
   const prevWeek = () => setBaseDate(subWeeks(baseDate, 1))
-  const today = () => setBaseDate(new Date())
+  const todayFn = () => setBaseDate(new Date())
 
-  const totalGridHeight = SLOTS.length * PIXELS_PER_SLOT
-
-  const gridContent = (
-    <div className="flex-1 overflow-y-auto flex flex-col relative bg-bg-app/30">
-      {/* Header dos dias */}
-      <div className="flex border-b border-border sticky top-0 bg-bg-surface z-[50] shrink-0 shadow-[0_1px_0_0_var(--border)]">
-        <div className="w-12 shrink-0 border-r border-border" />
-        {weekDays.map((date) => (
-          <div key={date.toISOString()} className="flex-1 text-center py-2 flex flex-col items-center justify-center border-r border-border last:border-r-0">
-            <span className="text-label text-text-tertiary uppercase">{format(date, 'eee', { locale: ptBR })}</span>
-            <span className="text-body-lg font-bold text-text-primary leading-tight">{format(date, 'd')}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Grid de slots */}
-      <div className="flex-1 grid grid-cols-[48px_repeat(5,minmax(0,1fr))]" style={{ minHeight: totalGridHeight }}>
-        {SLOTS.map(({ hour, minute }) => (
-          <Fragment key={`${hour}-${minute}`}>
-            {/* Label de horário — só aparece nos slots :00 */}
-            <div
-              className="border-r border-transparent bg-bg-surface opacity-90 z-10 relative flex justify-center shrink-0"
-              style={{
-                minHeight: PIXELS_PER_SLOT,
-                borderBottomWidth: minute === 0 ? '1px' : '0',
-                borderBottomColor: minute === 0 ? 'var(--border)' : 'transparent',
-                borderBottomStyle: 'solid',
-              }}
-            >
-              {minute === 0 && (
-                <span className="text-mono text-[10px] text-text-tertiary absolute -top-[9px] right-2 bg-bg-surface px-0.5 leading-none">
-                  {hour.toString().padStart(2, '0')}:00
-                </span>
-              )}
-            </div>
-
-            {/* Células DnD para cada dia */}
-            {weekDays.map((date, colIdx) => {
-              const isLastCol = colIdx === 4
-
-              // Tarefas cujo scheduled_at corresponde exatamente a este slot
-              const tasksForSlot = scheduledTasks.filter(task => {
-                const taskDate = new Date(task.scheduled_at!)
-                return (
-                  taskDate.getDate() === date.getDate() &&
-                  taskDate.getMonth() === date.getMonth() &&
-                  taskDate.getHours() === hour &&
-                  taskDate.getMinutes() === minute
-                )
-              })
-
-              return (
-                <div
-                  key={`cell-${date.getTime()}-${hour}-${minute}`}
-                  className={`relative hover:bg-accent/5 transition-colors p-1 flex flex-col gap-0.5 ${!isLastCol ? 'border-r border-border/50' : ''}`}
-                  style={{
-                    minHeight: PIXELS_PER_SLOT,
-                    borderBottom: minute === 30 ? '1px solid rgba(var(--border-rgb,0,0,0),0.4)' : '1px dashed rgba(var(--border-rgb,0,0,0),0.15)',
-                  }}
-                >
-                  <DroppableSlot date={date} hour={hour} minute={minute} />
-
-                  {tasksForSlot.map(task => {
-                    const client = clients.find(c => c.id === task.client_id)
-                    // Altura proporcional: cada 30min = PIXELS_PER_SLOT
-                    const heightPx = (task.estimated_minutes / 30) * PIXELS_PER_SLOT
-                    const taskId = String(task.id)
-                    const isGhost = taskId.includes('-ghost-')
-                    return (
-                      <DraggableAgendaTask
-                        key={task.id}
-                        task={task}
-                        heightPx={heightPx}
-                        clientColor={client?.color}
-                        clientName={client?.name}
-                        onEditClick={() => setEditingTask(task)}
-                        onUnschedule={!isGhost ? async () => {
-                          try { await updateTask(taskId, { scheduled_at: null }) } catch (e) { console.error(e) }
-                        } : undefined}
-                      />
-                    )
-                  })}
-                </div>
-              )
-            })}
-          </Fragment>
-        ))}
-      </div>
-    </div>
-  )
-
-  const renderHeader = (onExpandToggle: () => void, expandIcon: React.ReactNode) => (
-    <header className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0 bg-bg-surface-raised sticky top-0 z-[60]">
-      <div className="flex items-center gap-3">
-        <CalendarDays size={20} className="text-accent" strokeWidth={2} />
-        <h2 className="text-section text-text-primary uppercase tracking-wide font-bold">
-          {format(weekDays[0], "d 'de' MMM", { locale: ptBR })} — {format(weekDays[4], "d 'de' MMM", { locale: ptBR })}
-        </h2>
-      </div>
-      <div className="flex items-center gap-2">
-        <button onClick={today} className="text-small font-medium text-text-secondary hover:text-text-primary px-3 py-1 bg-bg-app border border-border rounded-radius-sm transition-colors">
-          Hoje
-        </button>
-        <div className="w-px h-4 bg-border" />
-        <button onClick={prevWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
-          <ChevronLeft size={18} strokeWidth={1.5} />
-        </button>
-        <button onClick={nextWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
-          <ChevronRight size={18} strokeWidth={1.5} />
-        </button>
-        <div className="w-px h-4 bg-border" />
-        <button onClick={onExpandToggle} className="text-text-secondary hover:text-accent hover:bg-accent/10 p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer" title={isExpanded ? 'Recolher agenda' : 'Expandir agenda'}>
-          {expandIcon}
-        </button>
-      </div>
-    </header>
-  )
-
-  const taskModal = editingTask !== false && editingTask !== null && (
-    <TaskModal
-      task={editingTask}
-      clients={clients}
-      currentUserEmail={currentUserEmail}
-      onClose={() => setEditingTask(false)}
-      onDelete={editingTask && removeTask ? async () => {
-        await removeTask(editingTask.id)
-        setEditingTask(false)
-      } : undefined}
-      onSave={async (payload) => {
-        await updateTask(editingTask.id, payload)
-        setEditingTask(false)
-      }}
-    />
-  )
+  // totalGridHeight: cada hora tem 2 sub-rows de PIXELS_PER_SLOT cada
+  const totalGridHeight = HOURS.length * 2 * PIXELS_PER_SLOT
 
   return (
     <>
-      <section className="bg-bg-surface border border-border rounded-radius-md shadow-card flex flex-col h-full min-h-0 relative">
-        {renderHeader(() => setIsExpanded(true), <Maximize2 size={16} strokeWidth={1.5} />)}
-        {gridContent}
-        {taskModal}
-      </section>
-
-      {isExpanded && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-bg-app/80 backdrop-blur-sm p-6 flex items-center justify-center animate-in fade-in duration-200">
-          <div className="absolute inset-0 z-0" onClick={() => setIsExpanded(false)} />
-          <div className="bg-bg-surface w-full max-w-[95vw] h-[90vh] rounded-radius-md shadow-modal flex flex-col border border-border relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
-            {renderHeader(() => setIsExpanded(false), <Minimize2 size={16} strokeWidth={1.5} />)}
-            {gridContent}
-            {taskModal}
-          </div>
-        </div>,
-        document.body
+      {/* Backdrop quando expandido */}
+      {isExpanded && (
+        <div
+          className="fixed inset-0 z-[9998] bg-bg-app/60 backdrop-blur-sm"
+          onClick={() => setIsExpanded(false)}
+        />
       )}
+
+      <section className={
+        isExpanded
+          ? 'fixed inset-6 z-[9999] bg-bg-surface border border-border rounded-radius-md shadow-modal flex flex-col overflow-hidden animate-in zoom-in-95 duration-200'
+          : 'bg-bg-surface border border-border rounded-radius-md shadow-card flex flex-col h-full min-h-0 relative'
+      }>
+        {/* ── Header ── */}
+        <header className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0 bg-bg-surface-raised sticky top-0 z-[60]">
+          <div className="flex items-center gap-3">
+            <CalendarDays size={20} className="text-accent" strokeWidth={2} />
+            <h2 className="text-section text-text-primary uppercase tracking-wide font-bold">
+              {format(weekDays[0], "d 'de' MMM", { locale: ptBR })} — {format(weekDays[4], "d 'de' MMM", { locale: ptBR })}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={todayFn} className="text-small font-medium text-text-secondary hover:text-text-primary px-3 py-1 bg-bg-app border border-border rounded-radius-sm transition-colors">
+              Hoje
+            </button>
+            <div className="w-px h-4 bg-border" />
+            <button onClick={prevWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
+              <ChevronLeft size={18} strokeWidth={1.5} />
+            </button>
+            <button onClick={nextWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
+              <ChevronRight size={18} strokeWidth={1.5} />
+            </button>
+            <div className="w-px h-4 bg-border" />
+            <button
+              onClick={() => setIsExpanded(v => !v)}
+              className="text-text-secondary hover:text-accent hover:bg-accent/10 p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer"
+              title={isExpanded ? 'Recolher agenda' : 'Expandir agenda'}
+            >
+              {isExpanded ? <Minimize2 size={16} strokeWidth={1.5} /> : <Maximize2 size={16} strokeWidth={1.5} />}
+            </button>
+          </div>
+        </header>
+
+        {/* ── Grid overflow container ── */}
+        <div className="flex-1 overflow-y-auto flex flex-col relative bg-bg-app/30">
+
+          {/* Cabeçalho dos dias */}
+          <div className="flex border-b border-border sticky top-0 bg-bg-surface z-[50] shrink-0 shadow-[0_1px_0_0_var(--border)]">
+            <div className="w-12 shrink-0 border-r border-border" />
+            {weekDays.map(date => (
+              <div key={date.toISOString()} className="flex-1 text-center py-2 flex flex-col items-center justify-center border-r border-border last:border-r-0">
+                <span className="text-label text-text-tertiary uppercase">{format(date, 'eee', { locale: ptBR })}</span>
+                <span className="text-body-lg font-bold text-text-primary leading-tight">{format(date, 'd')}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Matriz de horários — cada hora = 2 rows (×:00 e ×:30) */}
+          <div className="flex-1 grid grid-cols-[48px_repeat(5,minmax(0,1fr))]" style={{ minHeight: totalGridHeight }}>
+
+            {HOURS.map(hour => (
+              <Fragment key={hour}>
+
+                {/* ── ROW :00 ── */}
+
+                {/* Label da hora cheia */}
+                <div
+                  className="border-r bg-bg-surface opacity-90 z-10 relative flex justify-center shrink-0"
+                  style={{ minHeight: PIXELS_PER_SLOT }}
+                >
+                  <span className="text-mono text-[10px] text-text-tertiary absolute -top-[9px] right-2 bg-bg-surface px-0.5 leading-none">
+                    {hour.toString().padStart(2, '0')}:00
+                  </span>
+                </div>
+
+                {/* Células :00 para cada dia */}
+                {weekDays.map((date, colIdx) => {
+                  const isLastCol = colIdx === 4
+                  const tasksHere = scheduledTasks.filter(t => {
+                    const d = new Date(t.scheduled_at!)
+                    return d.getDate() === date.getDate()
+                        && d.getMonth() === date.getMonth()
+                        && d.getHours() === hour
+                        && d.getMinutes() === 0
+                  })
+                  return (
+                    <div
+                      key={`${date.getTime()}-${hour}-0`}
+                      className={`relative hover:bg-accent/5 transition-colors p-1 flex flex-col gap-1 ${!isLastCol ? 'border-r border-border/50' : ''}`}
+                      style={{ minHeight: PIXELS_PER_SLOT }}
+                    >
+                      <DroppableSlot date={date} hour={hour} minute={0} />
+                      {tasksHere.map(task => {
+                        const client = clients.find(c => c.id === task.client_id)
+                        const heightPx = (task.estimated_minutes / 30) * PIXELS_PER_SLOT
+                        const taskId = String(task.id)
+                        return (
+                          <DraggableAgendaTask
+                            key={task.id}
+                            task={task}
+                            heightPx={heightPx}
+                            clientColor={client?.color}
+                            clientName={client?.name}
+                            onEditClick={() => setEditingTask(task)}
+                            onUnschedule={!taskId.includes('-ghost-') ? async () => {
+                              try { await updateTask(taskId, { scheduled_at: null }) } catch(e) { console.error(e) }
+                            } : undefined}
+                          />
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+
+                {/* ── ROW :30 ── */}
+
+                {/* Label :30 sutil + separador de hora */}
+                <div
+                  className="border-r border-b border-border/40 bg-bg-surface opacity-70 z-10 relative flex justify-center items-end pb-[2px] shrink-0"
+                  style={{ minHeight: PIXELS_PER_SLOT }}
+                >
+                  <span className="text-mono text-[9px] text-text-tertiary/40 right-2 absolute bottom-[3px] leading-none">
+                    :30
+                  </span>
+                </div>
+
+                {/* Células :30 para cada dia */}
+                {weekDays.map((date, colIdx) => {
+                  const isLastCol = colIdx === 4
+                  const tasksHere = scheduledTasks.filter(t => {
+                    const d = new Date(t.scheduled_at!)
+                    return d.getDate() === date.getDate()
+                        && d.getMonth() === date.getMonth()
+                        && d.getHours() === hour
+                        && d.getMinutes() === 30
+                  })
+                  return (
+                    <div
+                      key={`${date.getTime()}-${hour}-30`}
+                      className={`relative border-b border-border/40 hover:bg-accent/5 transition-colors p-1 flex flex-col gap-1 ${!isLastCol ? 'border-r border-border/50' : ''}`}
+                      style={{ minHeight: PIXELS_PER_SLOT }}
+                    >
+                      <DroppableSlot date={date} hour={hour} minute={30} />
+                      {tasksHere.map(task => {
+                        const client = clients.find(c => c.id === task.client_id)
+                        const heightPx = (task.estimated_minutes / 30) * PIXELS_PER_SLOT
+                        const taskId = String(task.id)
+                        return (
+                          <DraggableAgendaTask
+                            key={task.id}
+                            task={task}
+                            heightPx={heightPx}
+                            clientColor={client?.color}
+                            clientName={client?.name}
+                            onEditClick={() => setEditingTask(task)}
+                            onUnschedule={!taskId.includes('-ghost-') ? async () => {
+                              try { await updateTask(taskId, { scheduled_at: null }) } catch(e) { console.error(e) }
+                            } : undefined}
+                          />
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+
+              </Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Modal de edição */}
+        {editingTask !== false && editingTask !== null && (
+          <TaskModal
+            task={editingTask}
+            clients={clients}
+            currentUserEmail={currentUserEmail}
+            onClose={() => setEditingTask(false)}
+            onDelete={editingTask && removeTask ? async () => {
+              await removeTask(editingTask.id)
+              setEditingTask(false)
+            } : undefined}
+            onSave={async (payload) => {
+              await updateTask(editingTask.id, payload)
+              setEditingTask(false)
+            }}
+          />
+        )}
+      </section>
     </>
   )
 }
