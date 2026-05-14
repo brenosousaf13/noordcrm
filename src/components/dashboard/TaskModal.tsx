@@ -122,7 +122,7 @@ export function TaskModal({ task, clients, currentUserEmail, onSave, onDelete, o
   return createPortal(
     <div className="fixed inset-0 z-[9999] bg-bg-app/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
        <div className="absolute inset-0" onClick={onClose} />
-       <form ref={formRef} onSubmit={handleSave} className="bg-bg-surface rounded-radius-md shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-border w-full max-w-[600px] flex flex-col overflow-hidden animate-in zoom-in-90 duration-200 max-h-[90vh] relative z-10">
+       <form ref={formRef} onSubmit={handleSave} className="bg-bg-surface rounded-radius-md shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-border w-full max-w-[900px] flex flex-col overflow-hidden animate-in zoom-in-90 duration-200 max-h-[90vh] relative z-10">
 
           <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-bg-surface-raised sticky top-0 shrink-0 z-10">
              <div>
@@ -167,9 +167,9 @@ export function TaskModal({ task, clients, currentUserEmail, onSave, onDelete, o
                  <div className="space-y-1.5">
                    <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider">🚩 Urgência</label>
                    <select value={draftPriority} onChange={e => setDraftPriority(Number(e.target.value) as 1|2|3)} className="w-full text-small px-2 py-1.5 bg-bg-surface border border-border rounded-radius-sm outline-none cursor-pointer">
-                      <option value={1}>Alta</option>
+                      <option value={1}>Baixa</option>
                       <option value={2}>Média</option>
-                      <option value={3}>Baixa</option>
+                      <option value={3}>Alta</option>
                    </select>
                  </div>
                  <div className="space-y-1.5">

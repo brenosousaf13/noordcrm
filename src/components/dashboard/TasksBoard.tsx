@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { CheckSquare, Paperclip, Clock, Zap, Plus, X, Filter, Check } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import type { Database } from '../../types/database.types'
-import { format, isToday, isTomorrow, isPast, endOfWeek, startOfWeek } from 'date-fns'
+import { format, isToday, isTomorrow, isPast, endOfWeek, startOfWeek, differenceInCalendarDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TaskModal } from './TaskModal'
 
@@ -51,12 +51,16 @@ export function DraggableTaskCard({
 
   let deadlineLabel = null
   let isLate = false
+  let daysUntil = 0
   if (refDate) {
-    if (isToday(refDate)) deadlineLabel = `HOJE às ${format(refDate, 'HH:mm')}`
-    else if (isTomorrow(refDate)) deadlineLabel = `AMANHÃ às ${format(refDate, 'HH:mm')}`
-    else deadlineLabel = format(refDate, "dd/MM 'às' HH:mm", { locale: ptBR })
-    if (isPast(refDate) && !isDone) isLate = true
+    daysUntil = differenceInCalendarDays(refDate, new Date())
+    if (isToday(refDate)) deadlineLabel = 'HOJE'
+    else if (isTomorrow(refDate)) deadlineLabel = 'AMANHÃ'
+    else if (daysUntil >= 2 && daysUntil <= 6) deadlineLabel = format(refDate, 'EEE', { locale: ptBR }).toUpperCase().replace('.', '')
+    else deadlineLabel = format(refDate, 'dd/MM', { locale: ptBR })
+    if (isPast(refDate) && !isToday(refDate) && !isDone) isLate = true
   }
+  const isDeadlineRed = !isDone && (isLate || daysUntil <= 3)
 
   const userColors = task.assigned_to ? USER_COLORS[task.assigned_to] : null
   const userName = getUserName(task.assigned_to)
@@ -132,15 +136,15 @@ export function DraggableTaskCard({
       {/* Coluna direita: deadline + prioridade */}
       <div className="flex flex-col items-center gap-1.5 shrink-0 p-2 pl-1 border-l border-border/50">
          {deadlineLabel && (
-           <span className={`text-mono text-[9px] font-bold px-1.5 py-0.5 rounded-radius-sm border text-center break-words max-w-[60px] leading-tight ${isLate && !isDone ? 'text-status-red bg-[#FEE2E2] border-[#FCA5A5]' : isDone ? 'text-text-tertiary bg-bg-surface-raised border-border opacity-50' : 'text-status-orange bg-[#FEF3C7] border-[#FDE68A]'}`}>
+           <span className={`text-mono text-[9px] font-bold px-1.5 py-0.5 rounded-radius-sm border text-center break-words max-w-[60px] leading-tight ${isDeadlineRed ? 'text-status-red bg-[#FEE2E2] border-[#FCA5A5]' : isDone ? 'text-text-tertiary bg-bg-surface-raised border-border opacity-50' : 'text-text-secondary bg-bg-surface-raised border-border'}`}>
              {deadlineLabel}
            </span>
          )}
          {!isDone && (
-           <div className="flex gap-[3px] items-start mt-auto" title={task.priority === 1 ? 'Alta' : task.priority === 2 ? 'Média' : 'Baixa'}>
-             <div className={`w-[3px] h-3.5 rounded-full ${task.priority === 1 ? 'bg-red' : task.priority === 2 ? 'bg-orange' : 'bg-gray-muted'}`} />
-             <div className={`w-[3px] h-2.5 rounded-full ${task.priority === 1 ? 'bg-red' : task.priority === 2 ? 'bg-orange' : 'bg-gray-muted'}`} />
-             <div className={`w-[3px] h-1.5 rounded-full ${task.priority === 1 ? 'bg-red' : 'bg-transparent'}`} />
+           <div className="flex gap-[3px] items-end mt-auto" title={task.priority === 3 ? 'Alta' : task.priority === 2 ? 'Média' : 'Baixa'}>
+             <div className={`w-[3px] h-1.5 rounded-full ${task.priority === 1 ? 'bg-status-yellow' : task.priority === 2 ? 'bg-status-orange' : 'bg-status-red'}`} />
+             <div className={`w-[3px] h-2.5 rounded-full ${task.priority >= 2 ? (task.priority === 2 ? 'bg-status-orange' : 'bg-status-red') : 'bg-transparent'}`} />
+             <div className={`w-[3px] h-3.5 rounded-full ${task.priority === 3 ? 'bg-status-red' : 'bg-transparent'}`} />
            </div>
          )}
       </div>
@@ -252,7 +256,7 @@ export function TasksBoard({
 
        if (!dValA && dValB) return 1
        if (dValA && !dValB) return -1
-       if (a.priority !== b.priority) return a.priority - b.priority
+       if (a.priority !== b.priority) return b.priority - a.priority
 
        return dValA - dValB
     })

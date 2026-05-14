@@ -1,6 +1,6 @@
 import { useState, useMemo, Fragment } from 'react'
 import { createPortal } from 'react-dom'
-import { CalendarDays, ChevronLeft, ChevronRight, X, Maximize2, Minimize2 } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, X, Maximize2, Minimize2, Check, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { startOfWeek, addDays, format, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
@@ -28,10 +28,10 @@ function DroppableSlot({ date, hour, minute }: { date: Date; hour: number; minut
 }
 
 export function DraggableAgendaTask({
-  task, heightPx, clientColor, clientName, onEditClick, onUnschedule,
+  task, heightPx, clientColor, clientName, onEditClick, onUnschedule, onToggleDone,
 }: {
   task: Task; heightPx?: number; clientColor?: string; clientName?: string
-  onEditClick: () => void; onUnschedule?: () => void
+  onEditClick: () => void; onUnschedule?: () => void; onToggleDone?: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: String(task.id),
@@ -66,16 +66,29 @@ export function DraggableAgendaTask({
         <div className="flex items-center gap-1 shrink-0 ml-1">
           {!isCompact && (
             <div className="flex flex-col gap-[3px] mt-1 items-end opacity-80 shrink-0">
-              <div className={`w-3.5 h-[3px] rounded-full ${task.priority === 1 ? 'bg-red' : task.priority === 2 ? 'bg-orange' : 'bg-gray-muted'}`} />
-              <div className={`w-2.5 h-[3px] rounded-full ${task.priority === 1 ? 'bg-red' : task.priority === 2 ? 'bg-orange' : 'bg-gray-muted'}`} />
-              <div className={`w-1.5 h-[3px] rounded-full ${task.priority === 1 ? 'bg-red' : 'bg-transparent'}`} />
+              <div className={`w-3.5 h-[3px] rounded-full ${task.priority === 3 ? 'bg-status-red' : task.priority === 2 ? 'bg-status-orange' : 'bg-status-yellow'}`} />
+              <div className={`w-2.5 h-[3px] rounded-full ${task.priority >= 2 ? (task.priority === 2 ? 'bg-status-orange' : 'bg-status-red') : 'bg-transparent'}`} />
+              <div className={`w-1.5 h-[3px] rounded-full ${task.priority === 3 ? 'bg-status-red' : 'bg-transparent'}`} />
             </div>
           )}
           <span className="text-[10px] text-text-tertiary whitespace-nowrap mt-0.5">{task.estimated_minutes}m</span>
+          {onToggleDone && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleDone() }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className={`opacity-0 group-hover:opacity-100 transition-all ml-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                isDone ? 'bg-accent border-accent text-white opacity-100' : 'border-border hover:border-accent hover:bg-accent/10'
+              }`}
+              title={isDone ? 'Marcar como pendente' : 'Marcar como feito'}
+            >
+              {isDone && <Check size={9} strokeWidth={3} />}
+            </button>
+          )}
           {onUnschedule && (
             <button
               onClick={(e) => { e.stopPropagation(); onUnschedule() }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 p-0.5 rounded-sm hover:bg-status-red/10 text-text-tertiary hover:text-status-red"
+              onPointerDown={(e) => e.stopPropagation()}
+              className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 p-0.5 rounded-sm hover:bg-status-red/10 text-text-tertiary hover:text-status-red"
               title="Remover da agenda"
             >
               <X size={11} strokeWidth={2.5} />
@@ -155,6 +168,12 @@ function AgendaGridBody({
                         clientColor={client?.color}
                         clientName={client?.name}
                         onEditClick={() => setEditingTask(task)}
+                        onToggleDone={!taskId.includes('-ghost-') ? async () => {
+                          try {
+                            const isDone = task.status === 'Concluído'
+                            await updateTask(taskId, { is_done: !isDone, status: isDone ? 'A fazer' : 'Concluído' })
+                          } catch (e) { console.error(e) }
+                        } : undefined}
                         onUnschedule={!taskId.includes('-ghost-') ? async () => {
                           try { await updateTask(taskId, { scheduled_at: null }) } catch (e) { console.error(e) }
                         } : undefined}
@@ -198,6 +217,12 @@ function AgendaGridBody({
                         clientColor={client?.color}
                         clientName={client?.name}
                         onEditClick={() => setEditingTask(task)}
+                        onToggleDone={!taskId.includes('-ghost-') ? async () => {
+                          try {
+                            const isDone = task.status === 'Concluído'
+                            await updateTask(taskId, { is_done: !isDone, status: isDone ? 'A fazer' : 'Concluído' })
+                          } catch (e) { console.error(e) }
+                        } : undefined}
                         onUnschedule={!taskId.includes('-ghost-') ? async () => {
                           try { await updateTask(taskId, { scheduled_at: null }) } catch (e) { console.error(e) }
                         } : undefined}
@@ -218,9 +243,10 @@ function AgendaGridBody({
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export function AgendaGrid({
-  tasks, clients, updateTask, removeTask, currentUserEmail,
+  tasks, clients, updateTask, removeTask, currentUserEmail, isMinimized, onMinimizeToggle,
 }: {
   tasks: Task[]; clients: Client[]; updateTask: any; removeTask?: any; currentUserEmail?: string
+  isMinimized?: boolean; onMinimizeToggle?: () => void
 }) {
   const [baseDate, setBaseDate] = useState(new Date())
   const [editingTask, setEditingTask] = useState<Task | null | false>(false)
@@ -276,7 +302,7 @@ export function AgendaGrid({
     />
   )
 
-  const header = (onToggle: () => void, icon: React.ReactNode) => (
+  const header = (onToggleExpand: () => void, expandIcon: React.ReactNode) => (
     <header className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0 bg-bg-surface-raised sticky top-0 z-[60]">
       <div className="flex items-center gap-3">
         <CalendarDays size={20} className="text-accent" strokeWidth={2} />
@@ -285,18 +311,33 @@ export function AgendaGrid({
         </h2>
       </div>
       <div className="flex items-center gap-2">
-        <button onClick={todayFn} className="text-small font-medium text-text-secondary hover:text-text-primary px-3 py-1 bg-bg-app border border-border rounded-radius-sm transition-colors">Hoje</button>
-        <div className="w-px h-4 bg-border" />
-        <button onClick={prevWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
-          <ChevronLeft size={18} strokeWidth={1.5} />
-        </button>
-        <button onClick={nextWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
-          <ChevronRight size={18} strokeWidth={1.5} />
-        </button>
-        <div className="w-px h-4 bg-border" />
-        <button onClick={onToggle} className="text-text-secondary hover:text-accent hover:bg-accent/10 p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer" title={isExpanded ? 'Recolher' : 'Expandir'}>
-          {icon}
-        </button>
+        {!isMinimized && (
+          <>
+            <button onClick={todayFn} className="text-small font-medium text-text-secondary hover:text-text-primary px-3 py-1 bg-bg-app border border-border rounded-radius-sm transition-colors">Hoje</button>
+            <div className="w-px h-4 bg-border" />
+            <button onClick={prevWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
+              <ChevronLeft size={18} strokeWidth={1.5} />
+            </button>
+            <button onClick={nextWeek} className="text-text-secondary hover:bg-bg-surface p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer shadow-sm">
+              <ChevronRight size={18} strokeWidth={1.5} />
+            </button>
+            <div className="w-px h-4 bg-border" />
+          </>
+        )}
+        {onMinimizeToggle && (
+          <button
+            onClick={onMinimizeToggle}
+            className="text-text-secondary hover:text-accent hover:bg-accent/10 p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer"
+            title={isMinimized ? 'Expandir agenda' : 'Minimizar agenda'}
+          >
+            {isMinimized ? <ChevronsUpDown size={16} strokeWidth={1.5} /> : <ChevronsDownUp size={16} strokeWidth={1.5} />}
+          </button>
+        )}
+        {!isMinimized && (
+          <button onClick={onToggleExpand} className="text-text-secondary hover:text-accent hover:bg-accent/10 p-1 rounded-radius-sm border border-transparent hover:border-border transition-colors cursor-pointer" title={isExpanded ? 'Recolher' : 'Expandir'}>
+            {expandIcon}
+          </button>
+        )}
       </div>
     </header>
   )
@@ -307,11 +348,11 @@ export function AgendaGrid({
       <section className="bg-bg-surface border border-border rounded-radius-md shadow-card flex flex-col h-full min-h-0 relative">
         {header(() => setIsExpanded(true), <Maximize2 size={16} strokeWidth={1.5} />)}
 
-        {/* Grid montado aqui apenas quando não está expandido */}
-        {!isExpanded && <AgendaGridBody {...bodyProps} />}
+        {/* Grid montado aqui apenas quando não está minimizado e não expandido */}
+        {!isExpanded && !isMinimized && <AgendaGridBody {...bodyProps} />}
 
         {/* Placeholder visual quando expandido */}
-        {isExpanded && (
+        {isExpanded && !isMinimized && (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-text-tertiary text-small italic">Agenda em tela cheia…</p>
           </div>
@@ -321,7 +362,7 @@ export function AgendaGrid({
       </section>
 
       {/* ── Portal tela cheia (grid só monta aqui quando expandido) ── */}
-      {isExpanded && createPortal(
+      {isExpanded && !isMinimized && createPortal(
         <div className="fixed inset-0 z-[99999] bg-bg-app/70 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="absolute inset-0" onClick={() => setIsExpanded(false)} />
           <div className="relative z-10 bg-bg-surface border border-border rounded-radius-md shadow-modal w-full max-w-[95vw] h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">

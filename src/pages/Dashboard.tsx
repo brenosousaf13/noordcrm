@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { LayoutDashboard, Users, CheckSquare, FileText, CircleUser, LogOut } from 'lucide-react'
 import { AgendaGrid } from '../components/dashboard/AgendaGrid'
@@ -18,6 +18,29 @@ export function Dashboard() {
   const [activeDragData, setActiveDragData] = useState<any>(null)
   const [newTaskTrigger, setNewTaskTrigger] = useState(0)
   const [newNoteTrigger, setNewNoteTrigger] = useState(0)
+  const [isAgendaMinimized, setIsAgendaMinimized] = useState(false)
+  const [agendaHeightPct, setAgendaHeightPct] = useState(45)
+
+  const mainRef = useRef<HTMLElement>(null)
+
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const container = mainRef.current
+    if (!container) return
+    const containerH = container.getBoundingClientRect().height
+    const startY = e.clientY
+    const startPct = agendaHeightPct
+    const onMove = (ev: MouseEvent) => {
+      const delta = ((ev.clientY - startY) / containerH) * 100
+      setAgendaHeightPct(Math.min(75, Math.max(20, startPct + delta)))
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [agendaHeightPct])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -35,7 +58,7 @@ export function Dashboard() {
         setActiveTab('home')
         setNewTaskTrigger(prev => prev + 1)
       }
-      if (e.ctrlKey && e.key === 'n') {
+      if (e.ctrlKey && e.key === 'q') {
         e.preventDefault()
         setActiveTab('home')
         setNewNoteTrigger(prev => prev + 1)
@@ -158,11 +181,35 @@ export function Dashboard() {
         <ClientsPage />
       ) : activeTab === 'home' ? (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
-           <main className="flex-1 p-5 h-screen overflow-hidden flex flex-col gap-5 relative z-0 animate-in fade-in duration-300">
+           <main ref={mainRef} className="flex-1 p-5 h-screen overflow-hidden flex flex-col relative z-0 animate-in fade-in duration-300">
 
-             <div className="h-[45%] shrink-0 flex flex-col relative w-full min-h-0">
-                <AgendaGrid tasks={tasks} clients={clients} updateTask={updateTask} removeTask={removeTask} currentUserEmail={user?.email} />
+             {/* Agenda — altura dinâmica ou colapsada ao header */}
+             <div
+               className="shrink-0 flex flex-col relative w-full min-h-0 transition-[height] duration-300"
+               style={{ height: isAgendaMinimized ? 'auto' : `${agendaHeightPct}%` }}
+             >
+               <AgendaGrid
+                 tasks={tasks}
+                 clients={clients}
+                 updateTask={updateTask}
+                 removeTask={removeTask}
+                 currentUserEmail={user?.email}
+                 isMinimized={isAgendaMinimized}
+                 onMinimizeToggle={() => setIsAgendaMinimized(v => !v)}
+               />
              </div>
+
+             {/* Divisor arrastável */}
+             {!isAgendaMinimized ? (
+               <div
+                 className="w-full h-4 flex items-center justify-center cursor-row-resize group shrink-0"
+                 onMouseDown={handleDividerMouseDown}
+               >
+                 <div className="w-10 h-1 rounded-full bg-border group-hover:bg-accent/50 transition-colors" />
+               </div>
+             ) : (
+               <div className="h-4 shrink-0" />
+             )}
 
              <div className="flex-1 min-h-0 flex gap-5 w-full relative">
 
