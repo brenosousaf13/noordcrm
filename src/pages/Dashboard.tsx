@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, CheckSquare, FileText, CircleUser, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, CheckSquare, FileText, CircleUser, LogOut, BookOpen } from 'lucide-react'
 import { AgendaGrid } from '../components/dashboard/AgendaGrid'
 import { TasksBoard } from '../components/dashboard/TasksBoard'
 import { NotesPanel } from '../components/dashboard/NotesPanel'
 import { ClientsPage } from '../components/clients/ClientsPage'
+import { DocumentsPage } from '../components/documents/DocumentsPage'
 import { DndContext, pointerWithin, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { useTasks } from '../hooks/useTasks'
@@ -73,6 +74,7 @@ export function Dashboard() {
     { id: 'clientes', label: 'Clientes', icon: Users },
     { id: 'tarefas', label: 'Tarefas', icon: CheckSquare },
     { id: 'notas', label: 'Notas', icon: FileText },
+    { id: 'documentos', label: 'Docs', icon: BookOpen },
   ]
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -177,7 +179,9 @@ export function Dashboard() {
       </aside>
 
       {/* Views Dinâmicas */}
-      {activeTab === 'clientes' ? (
+      {activeTab === 'documentos' ? (
+        <DocumentsPage />
+      ) : activeTab === 'clientes' ? (
         <ClientsPage />
       ) : activeTab === 'home' ? (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>

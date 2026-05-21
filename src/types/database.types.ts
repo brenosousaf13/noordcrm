@@ -129,6 +129,48 @@ export interface Database {
         }
         Relationships: []
       }
+      documents: {
+        Row: {
+          id: string
+          title: string
+          content: Json | null
+          client_id: string | null
+          parent_id: string | null
+          icon: string | null
+          is_public: boolean
+          share_token: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title?: string
+          content?: Json | null
+          client_id?: string | null
+          parent_id?: string | null
+          icon?: string | null
+          is_public?: boolean
+          share_token?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          content?: Json | null
+          client_id?: string | null
+          parent_id?: string | null
+          icon?: string | null
+          is_public?: boolean
+          share_token?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
