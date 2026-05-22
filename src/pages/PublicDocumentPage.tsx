@@ -11,6 +11,7 @@ import Link from '@tiptap/extension-link'
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import { TableOfContentsExt } from '../components/documents/TableOfContentsExt'
 import { supabase } from '../lib/supabase'
 import type { Document } from '../hooks/useDocuments'
 
@@ -54,6 +55,7 @@ export function PublicDocumentPage() {
       TableHeader,
       TaskList,
       TaskItem.configure({ nested: true }),
+      TableOfContentsExt,
     ],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     content: (document?.content as any) || '',

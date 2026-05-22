@@ -96,6 +96,14 @@ const COMMANDS: CommandItem[] = [
     },
   },
   {
+    title: 'Tabela de Conteúdos',
+    description: 'Índice automático pelos títulos',
+    icon: '≡',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent({ type: 'tableOfContents' }).run()
+    },
+  },
+  {
     title: 'Imagem',
     description: 'Fazer upload de uma imagem',
     icon: '🖼',

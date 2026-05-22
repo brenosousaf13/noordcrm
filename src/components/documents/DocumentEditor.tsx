@@ -14,6 +14,7 @@ import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import { Globe, Lock, Copy, Check, Link2, X } from 'lucide-react'
 import { SlashCommandExt } from './SlashCommandExt'
+import { TableOfContentsExt } from './TableOfContentsExt'
 import { uploadImage } from '../../lib/uploadImage'
 import type { Document } from '../../hooks/useDocuments'
 import type { Database } from '../../types/database.types'
@@ -86,6 +87,7 @@ export function DocumentEditor({ document, allDocuments, onUpdate, clients, onGe
       TaskList,
       TaskItem.configure({ nested: true }),
       SlashCommandExt,
+      TableOfContentsExt,
     ],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     content: (document.content as any) || '',
