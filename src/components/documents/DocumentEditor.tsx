@@ -52,15 +52,70 @@ export function DocumentEditor({ document, allDocuments, onUpdate, clients, onGe
 
   const titleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const contentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const printRef = useRef<HTMLDivElement>(null)
 
   const handleExportPDF = () => {
-    const el = printRef.current
-    if (!el) return
-    // Temporarily mark the element for @media print targeting
-    el.setAttribute('data-printing', 'true')
-    window.print()
-    el.removeAttribute('data-printing')
+    if (!editor) return
+    const editorHTML = editor.getHTML()
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>${title || 'Documento'}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;color:#111827;background:#fff;padding:2cm 2.5cm;max-width:210mm;margin:0 auto;font-size:14px;line-height:1.6}
+    .doc-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:2em;padding-bottom:1em;border-bottom:1px solid #E4E7EC}
+    .doc-icon{font-size:2.2rem;line-height:1}
+    .doc-title{font-family:'Syne',sans-serif;font-size:2rem;font-weight:700;color:#111827;line-height:1.2}
+    h1{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:700;color:#111827;margin:1.5em 0 .5em;line-height:1.2}
+    h2{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:700;color:#111827;margin:1.5em 0 .5em}
+    h3{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:#111827;margin:1.25em 0 .4em}
+    h4{font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;color:#6B7280;margin:1em 0 .3em;text-transform:uppercase;letter-spacing:.04em}
+    p{color:#6B7280;line-height:1.6;margin-bottom:.5rem}
+    strong{font-weight:600;color:#111827}
+    em{font-style:italic}
+    s{text-decoration:line-through}
+    u{text-decoration:underline}
+    a{color:#1A9E6E;text-decoration:underline}
+    ul,ol{padding-left:1.5em;margin:.5em 0;color:#6B7280}
+    li{margin-bottom:.25em}
+    blockquote{border-left:3px solid #1A9E6E;margin:.75em 0;padding:.5em 1em;color:#6B7280;background:#E8F7F1;border-radius:0 6px 6px 0}
+    code{background:#F8F9FA;border:1px solid #E4E7EC;border-radius:4px;padding:.15em .4em;font-family:'DM Mono',monospace;font-size:.85em;color:#1A9E6E}
+    pre{background:#F8F9FA;border:1px solid #E4E7EC;border-radius:8px;padding:1em 1.25em;font-family:'DM Mono',monospace;font-size:.875em;color:#111827;margin:.75em 0;overflow-x:auto}
+    pre code{background:none;border:none;padding:0;color:inherit}
+    table{border-collapse:collapse;width:100%;margin:1em 0}
+    td,th{border:1px solid #E4E7EC;padding:.5em .75em;text-align:left;color:#6B7280;font-size:.875rem}
+    th{background:#F8F9FA;font-weight:600;color:#111827;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
+    img{max-width:100%;height:auto;border-radius:8px;border:1px solid #E4E7EC;display:block;margin:1em 0}
+    hr{border:none;border-top:1px solid #CBD2DA;margin:1.5em 0}
+    mark{padding:.1em .3em;border-radius:3px}
+    ul[data-type="taskList"]{list-style:none;padding-left:.25em}
+    ul[data-type="taskList"] li{display:flex;align-items:flex-start;gap:.5em}
+    ul[data-type="taskList"] li[data-checked="true"] > div{text-decoration:line-through;color:#9CA3AF}
+    div[data-type="table-of-contents"]{display:none}
+    @page{margin:0}
+    @media print{body{padding:1.5cm 2cm}}
+  </style>
+</head>
+<body>
+  <div class="doc-header">
+    <span class="doc-icon">${icon}</span>
+    <span class="doc-title">${title || 'Sem título'}</span>
+  </div>
+  ${editorHTML}
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() { window.print(); window.onafterprint = function() { window.close(); }; }, 400);
+    });
+  </script>
+</body>
+</html>`)
+    printWindow.document.close()
   }
 
   const breadcrumb = useCallback(() => {
@@ -227,8 +282,8 @@ export function DocumentEditor({ document, allDocuments, onUpdate, clients, onGe
         </div>
       </div>
 
-      {/* Content area — also the print region */}
-      <div ref={printRef} id="doc-print-area" className="flex-1 px-8 py-8 max-w-3xl mx-auto w-full">
+      {/* Content area */}
+      <div className="flex-1 px-8 py-8 max-w-3xl mx-auto w-full">
         {/* Icon + Title */}
         <div className="flex items-start gap-3 mb-6">
           <div className="relative">
