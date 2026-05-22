@@ -12,7 +12,7 @@ import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table
 import Placeholder from '@tiptap/extension-placeholder'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
-import { Globe, Lock, Copy, Check, Link2, X } from 'lucide-react'
+import { Globe, Lock, Copy, Check, Link2, X, Download } from 'lucide-react'
 import { SlashCommandExt } from './SlashCommandExt'
 import { TableOfContentsExt } from './TableOfContentsExt'
 import { uploadImage } from '../../lib/uploadImage'
@@ -52,6 +52,16 @@ export function DocumentEditor({ document, allDocuments, onUpdate, clients, onGe
 
   const titleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const contentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const printRef = useRef<HTMLDivElement>(null)
+
+  const handleExportPDF = () => {
+    const el = printRef.current
+    if (!el) return
+    // Temporarily mark the element for @media print targeting
+    el.setAttribute('data-printing', 'true')
+    window.print()
+    el.removeAttribute('data-printing')
+  }
 
   const breadcrumb = useCallback(() => {
     const ancestors: Document[] = []
@@ -196,6 +206,14 @@ export function DocumentEditor({ document, allDocuments, onUpdate, clients, onGe
             </div>
           )}
           <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-radius-sm text-small font-medium transition-colors bg-bg-app text-text-secondary hover:text-text-primary border border-border"
+            title="Salvar como PDF"
+          >
+            <Download size={13} />
+            PDF
+          </button>
+          <button
             onClick={() => setShowShareModal(true)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-radius-sm text-small font-medium transition-colors ${
               document.is_public
@@ -209,8 +227,8 @@ export function DocumentEditor({ document, allDocuments, onUpdate, clients, onGe
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="flex-1 px-8 py-8 max-w-3xl mx-auto w-full">
+      {/* Content area — also the print region */}
+      <div ref={printRef} id="doc-print-area" className="flex-1 px-8 py-8 max-w-3xl mx-auto w-full">
         {/* Icon + Title */}
         <div className="flex items-start gap-3 mb-6">
           <div className="relative">

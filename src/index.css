@@ -338,3 +338,67 @@
     cursor: col-resize;
   }
 }
+
+/* --- PRINT / PDF EXPORT --- */
+@media print {
+  /* Hide everything except the document content */
+  body > * {
+    display: none !important;
+  }
+
+  #doc-print-area {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 2cm 2.5cm !important;
+    background: white !important;
+    overflow: visible !important;
+    font-family: 'DM Sans', sans-serif;
+    color: #111827;
+  }
+
+  /* Print title and icon */
+  #doc-print-area textarea {
+    all: unset;
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    color: #111827;
+    margin-bottom: 0.5em;
+    width: 100%;
+  }
+
+  /* Headings */
+  #doc-print-area .ProseMirror h1 { font-size: 1.8rem; margin-top: 1.4em; }
+  #doc-print-area .ProseMirror h2 { font-size: 1.4rem; margin-top: 1.2em; }
+  #doc-print-area .ProseMirror h3 { font-size: 1.15rem; margin-top: 1em; }
+  #doc-print-area .ProseMirror h4 { font-size: 1rem; margin-top: 0.8em; }
+
+  /* Tables */
+  #doc-print-area table { page-break-inside: avoid; }
+  #doc-print-area table td, #doc-print-area table th { border: 1px solid #cbd2da; }
+
+  /* Images */
+  #doc-print-area .doc-image { max-width: 100%; page-break-inside: avoid; }
+
+  /* Links — show URL */
+  #doc-print-area a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.8em;
+    color: #6b7280;
+  }
+
+  /* Page breaks */
+  #doc-print-area h1, #doc-print-area h2 { page-break-after: avoid; }
+  #doc-print-area p, #doc-print-area li { orphans: 3; widows: 3; }
+
+  /* Hide interactive elements */
+  #doc-print-area button,
+  #doc-print-area .toc-block button::after,
+  #doc-print-area [data-type="table-of-contents"] .text-label {
+    pointer-events: none;
+  }
+}
