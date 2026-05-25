@@ -16,7 +16,7 @@ export function useClientFiles() {
   const fetchFiles = useCallback(async (clientId: string) => {
     setLoading(true)
     const { data, error } = await supabase.storage
-      .from('client-files')
+      .from('clients-files')
       .list(clientId, { sortBy: { column: 'created_at', order: 'desc' } })
     if (error) console.error('Erro ao listar arquivos:', error)
     setFiles((data as ClientFile[]) ?? [])
@@ -26,14 +26,14 @@ export function useClientFiles() {
   const uploadFile = async (clientId: string, file: File) => {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const path = `${clientId}/${Date.now()}_${safeName}`
-    const { error } = await supabase.storage.from('client-files').upload(path, file)
+    const { error } = await supabase.storage.from('clients-files').upload(path, file)
     if (error) throw error
     await fetchFiles(clientId)
   }
 
   const deleteFile = async (clientId: string, fileName: string) => {
     const { error } = await supabase.storage
-      .from('client-files')
+      .from('clients-files')
       .remove([`${clientId}/${fileName}`])
     if (error) throw error
     setFiles(prev => prev.filter(f => f.name !== fileName))
@@ -41,7 +41,7 @@ export function useClientFiles() {
 
   const getPublicUrl = (clientId: string, fileName: string) => {
     const { data } = supabase.storage
-      .from('client-files')
+      .from('clients-files')
       .getPublicUrl(`${clientId}/${fileName}`)
     return data.publicUrl
   }

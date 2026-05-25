@@ -589,7 +589,7 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                   <p className="text-small font-semibold text-status-red">Erro no upload</p>
                   <p className="text-[11px] text-status-red/80 mt-0.5 break-words">{uploadError}</p>
                   <p className="text-[11px] text-text-tertiary mt-1.5">
-                    Verifique se o bucket <code className="font-mono bg-bg-app px-1 rounded border border-border">client-files</code> existe no Supabase Storage com acesso público habilitado.
+                    Verifique se o bucket <code className="font-mono bg-bg-app px-1 rounded border border-border">clients-files</code> existe no Supabase Storage com acesso público habilitado.
                   </p>
                 </div>
                 <button onClick={() => setUploadError(null)} className="text-status-red/50 hover:text-status-red shrink-0">
