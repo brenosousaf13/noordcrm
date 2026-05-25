@@ -3,7 +3,7 @@ import {
   Mail, Phone, MapPin, FileText, Edit3, Trash2,
   CheckSquare, BookOpen, ImageIcon, Plus, Download,
   X, Clock, AlertCircle, CheckCircle2, Circle, UploadCloud,
-  ExternalLink, Building2, Globe, Lock
+  ExternalLink, Building2, Globe, Lock, Link2, User, Film
 } from 'lucide-react'
 import { format, isToday, isTomorrow, isPast, differenceInCalendarDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -31,6 +31,14 @@ const STATUS_CONFIG = {
   'Concluído': { color: 'text-accent bg-accent-light border-accent/20', icon: CheckCircle2 },
   'Atrasado': { color: 'text-status-red bg-status-red/10 border-status-red/20', icon: AlertCircle },
 }
+
+const TEAM_USERS = [
+  { email: 'brenosousaf13@gmail.com', label: 'Breno' },
+  { email: 'lucassousaf01@gmail.com', label: 'Lucas' },
+  { email: 'marceladneves@yahoo.com.br', label: 'Marcela' },
+]
+
+const PRIORITY_LABEL = { 1: 'Baixa', 2: 'Média', 3: 'Alta' } as const
 
 function DeadlineBadge({ deadline, isDone }: { deadline: string | null; isDone: boolean }) {
   if (!deadline) return null
@@ -64,9 +72,10 @@ function PriorityBars({ priority }: { priority: 1 | 2 | 3 }) {
 function FileCard({ name, onDelete, getUrl }: { name: string; clientId: string; onDelete: () => void; getUrl: () => string }) {
   const url = getUrl()
   const isImage = /\.(jpe?g|png|gif|webp|svg|avif)$/i.test(name)
+  const isVideo = /\.(mp4|mov|avi|webm|mkv)$/i.test(name)
   const isPDF = /\.pdf$/i.test(name)
   const displayName = name.replace(/^\d+_/, '')
-  const size = displayName.length > 28 ? displayName.slice(0, 26) + '…' : displayName
+  const short = displayName.length > 28 ? displayName.slice(0, 26) + '…' : displayName
 
   return (
     <div className="group relative bg-bg-surface border border-border rounded-radius-md overflow-hidden hover:shadow-raised transition-shadow">
@@ -74,13 +83,17 @@ function FileCard({ name, onDelete, getUrl }: { name: string; clientId: string; 
         <a href={url} target="_blank" rel="noopener noreferrer">
           <img src={url} alt={displayName} className="w-full h-28 object-cover bg-bg-app" />
         </a>
+      ) : isVideo ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-28 bg-bg-app hover:bg-bg-surface-raised transition-colors">
+          <Film size={32} className="text-status-blue opacity-50" />
+        </a>
       ) : (
         <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-28 bg-bg-app hover:bg-bg-surface-raised transition-colors">
           <FileText size={32} className={isPDF ? 'text-status-red opacity-60' : 'text-text-tertiary opacity-40'} />
         </a>
       )}
       <div className="px-2.5 py-2 flex items-center justify-between gap-2">
-        <span className="text-[11px] text-text-secondary truncate" title={displayName}>{size}</span>
+        <span className="text-[11px] text-text-secondary truncate" title={displayName}>{short}</span>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <a href={url} download={displayName} className="p-1 rounded hover:bg-bg-app text-text-tertiary hover:text-accent transition-colors">
             <Download size={12} />
@@ -97,9 +110,13 @@ function FileCard({ name, onDelete, getUrl }: { name: string; clientId: string; 
 export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfileProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
+  const [taskAssigneeFilter, setTaskAssigneeFilter] = useState<string>('all')
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [openDocId, setOpenDocId] = useState<string | null>(null)
+  const [linkDocOpen, setLinkDocOpen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { documents, addDocument, updateDocument, generateShareToken, revokeShareToken } = useDocuments()
@@ -107,6 +124,7 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
 
   const clientTasks = tasks.filter(t => t.client_id === client.id)
   const clientDocs = documents.filter(d => d.client_id === client.id)
+  const unlinkedDocs = documents.filter(d => !d.client_id)
 
   const taskCounts = {
     all: clientTasks.length,
@@ -116,23 +134,36 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
     'Atrasado': clientTasks.filter(t => t.status === 'Atrasado').length,
   }
 
-  const filteredTasks = taskFilter === 'all' ? clientTasks : clientTasks.filter(t => t.status === taskFilter)
+  const filteredTasks = clientTasks
+    .filter(t => taskFilter === 'all' || t.status === taskFilter)
+    .filter(t => taskAssigneeFilter === 'all' || t.assigned_to === taskAssigneeFilter)
 
   useEffect(() => {
     if (activeTab === 'media') fetchFiles(client.id)
   }, [activeTab, client.id, fetchFiles])
 
+  useEffect(() => {
+    setTaskFilter('all')
+    setTaskAssigneeFilter('all')
+    setSelectedTask(null)
+    setOpenDocId(null)
+    setUploadError(null)
+  }, [client.id])
+
   const handleUpload = async (fileList: FileList | null) => {
     if (!fileList?.length) return
     setUploading(true)
+    setUploadError(null)
     try {
       for (const file of Array.from(fileList)) {
         await uploadFile(client.id, file)
       }
-    } catch (err) {
-      console.error('Erro no upload:', err)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setUploadError(msg)
     } finally {
       setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -143,6 +174,11 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
     } catch (err) {
       console.error('Erro ao criar documento:', err)
     }
+  }
+
+  const handleLinkDoc = async (docId: string) => {
+    await updateDocument(docId, { client_id: client.id })
+    setLinkDocOpen(false)
   }
 
   const openDoc = documents.find(d => d.id === openDocId) ?? null
@@ -158,9 +194,7 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
     <div className="flex-1 flex flex-col h-full bg-bg-app overflow-hidden">
       {/* ── Profile Header ── */}
       <div className="bg-bg-surface border-b border-border shrink-0">
-        {/* Color banner */}
         <div className="h-12 w-full" style={{ background: `linear-gradient(135deg, ${client.color}22 0%, ${client.color}08 100%)`, borderBottom: `2px solid ${client.color}30` }} />
-
         <div className="px-6 pb-4 -mt-5">
           <div className="flex items-end justify-between">
             <div className="flex items-center gap-3">
@@ -181,8 +215,6 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
               </button>
             </div>
           </div>
-
-          {/* Quick stats */}
           <div className="flex items-center gap-4 mt-3">
             {client.email && (
               <a href={`mailto:${client.email}`} className="flex items-center gap-1.5 text-small text-text-tertiary hover:text-accent transition-colors">
@@ -201,8 +233,6 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
             )}
           </div>
         </div>
-
-        {/* Tabs */}
         <div className="px-6 flex items-center gap-0 border-t border-border">
           {tabs.map(tab => {
             const Icon = tab.icon
@@ -212,9 +242,7 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-small font-medium border-b-2 transition-colors ${
-                  active
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border'
+                  active ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border'
                 }`}
               >
                 <Icon size={13} />
@@ -236,9 +264,7 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
         {/* ── VISÃO GERAL ── */}
         {activeTab === 'overview' && (
           <div className="p-6 grid grid-cols-3 gap-5 max-w-5xl">
-            {/* Left: Contact info */}
             <div className="col-span-2 space-y-5">
-              {/* Stats cards */}
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: 'Tarefas ativas', value: clientTasks.filter(t => t.status !== 'Concluído').length, color: client.color, sub: `${clientTasks.filter(t => t.status === 'Atrasado').length} atrasadas` },
@@ -253,7 +279,6 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                 ))}
               </div>
 
-              {/* Recent tasks */}
               {clientTasks.length > 0 && (
                 <div className="bg-bg-surface rounded-radius-md border border-border shadow-card overflow-hidden">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -264,19 +289,18 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                     {clientTasks.slice(0, 4).map(task => {
                       const cfg = STATUS_CONFIG[task.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG['A fazer']
                       return (
-                        <div key={task.id} className="px-4 py-3 flex items-center gap-3">
+                        <button key={task.id} onClick={() => setSelectedTask(task)} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-bg-app transition-colors text-left">
                           <PriorityBars priority={task.priority} />
                           <span className="flex-1 text-small text-text-primary truncate">{task.title}</span>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cfg.color}`}>{task.status}</span>
                           <DeadlineBadge deadline={task.deadline} isDone={task.is_done} />
-                        </div>
+                        </button>
                       )
                     })}
                   </div>
                 </div>
               )}
 
-              {/* Recent docs */}
               {clientDocs.length > 0 && (
                 <div className="bg-bg-surface rounded-radius-md border border-border shadow-card overflow-hidden">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -298,7 +322,6 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
               )}
             </div>
 
-            {/* Right: Contact details */}
             <div className="space-y-4">
               <div className="bg-bg-surface rounded-radius-md border border-border shadow-card p-4">
                 <h4 className="text-label font-semibold text-text-secondary uppercase tracking-wide mb-3">Informações</h4>
@@ -338,7 +361,6 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                   )}
                 </div>
               </div>
-
               {client.description && (
                 <div className="bg-bg-surface rounded-radius-md border border-border shadow-card p-4">
                   <h4 className="text-label font-semibold text-text-secondary uppercase tracking-wide mb-2">Descrição</h4>
@@ -352,30 +374,60 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
         {/* ── TAREFAS ── */}
         {activeTab === 'tasks' && (
           <div className="p-6">
-            {/* Filter chips */}
-            <div className="flex items-center gap-2 mb-5 flex-wrap">
-              {(['all', 'A fazer', 'Fazendo', 'Concluído', 'Atrasado'] as TaskFilter[]).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setTaskFilter(f)}
-                  className={`px-3 py-1.5 rounded-radius-sm text-small font-medium transition-colors border ${
-                    taskFilter === f
-                      ? 'bg-accent text-white border-accent'
-                      : 'bg-bg-surface text-text-secondary border-border hover:border-accent/50 hover:text-text-primary'
-                  }`}
-                >
-                  {f === 'all' ? 'Todas' : f}
-                  <span className="ml-1.5 opacity-60 text-[10px]">
-                    {f === 'all' ? taskCounts.all : taskCounts[f as keyof typeof taskCounts]}
-                  </span>
-                </button>
-              ))}
+            {/* Filters */}
+            <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {(['all', 'A fazer', 'Fazendo', 'Concluído', 'Atrasado'] as TaskFilter[]).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setTaskFilter(f)}
+                    className={`px-3 py-1.5 rounded-radius-sm text-small font-medium transition-colors border ${
+                      taskFilter === f
+                        ? 'bg-accent text-white border-accent'
+                        : 'bg-bg-surface text-text-secondary border-border hover:border-accent/50 hover:text-text-primary'
+                    }`}
+                  >
+                    {f === 'all' ? 'Todas' : f}
+                    <span className="ml-1.5 opacity-60 text-[10px]">
+                      {f === 'all' ? taskCounts.all : taskCounts[f as keyof typeof taskCounts]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <User size={12} className="text-text-tertiary" />
+                <div className="flex items-center gap-1 bg-bg-surface border border-border rounded-radius-sm p-0.5">
+                  <button
+                    onClick={() => setTaskAssigneeFilter('all')}
+                    className={`px-2.5 py-1 rounded text-small transition-colors ${
+                      taskAssigneeFilter === 'all'
+                        ? 'bg-bg-surface-raised text-text-primary font-semibold shadow-sm'
+                        : 'text-text-tertiary hover:text-text-secondary'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  {TEAM_USERS.map(u => (
+                    <button
+                      key={u.email}
+                      onClick={() => setTaskAssigneeFilter(u.email)}
+                      className={`px-2.5 py-1 rounded text-small transition-colors ${
+                        taskAssigneeFilter === u.email
+                          ? 'bg-bg-surface-raised text-text-primary font-semibold shadow-sm'
+                          : 'text-text-tertiary hover:text-text-secondary'
+                      }`}
+                    >
+                      {u.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {filteredTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <CheckSquare size={36} className="text-text-tertiary opacity-25 mb-3" />
-                <p className="text-body text-text-tertiary">Nenhuma tarefa {taskFilter !== 'all' ? `com status "${taskFilter}"` : 'para este cliente'}.</p>
+                <p className="text-body text-text-tertiary">Nenhuma tarefa encontrada com os filtros aplicados.</p>
               </div>
             ) : (
               <div className="bg-bg-surface rounded-radius-md border border-border shadow-card overflow-hidden">
@@ -394,10 +446,12 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                     {filteredTasks.map(task => {
                       const cfg = STATUS_CONFIG[task.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG['A fazer']
                       return (
-                        <tr key={task.id} className="border-b border-border/50 hover:bg-bg-app transition-colors">
-                          <td className="px-4 py-3">
-                            <PriorityBars priority={task.priority} />
-                          </td>
+                        <tr
+                          key={task.id}
+                          onClick={() => setSelectedTask(task)}
+                          className="border-b border-border/50 hover:bg-bg-app transition-colors cursor-pointer"
+                        >
+                          <td className="px-4 py-3"><PriorityBars priority={task.priority} /></td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               {task.is_done && <CheckCircle2 size={13} className="text-accent shrink-0" />}
@@ -413,7 +467,9 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                           </td>
                           <td className="px-4 py-3">
                             {task.assigned_to ? (
-                              <span className="text-small text-text-tertiary">{task.assigned_to.split('@')[0]}</span>
+                              <span className="text-small text-text-tertiary">
+                                {TEAM_USERS.find(u => u.email === task.assigned_to)?.label ?? task.assigned_to.split('@')[0]}
+                              </span>
                             ) : (
                               <span className="text-[11px] text-text-tertiary italic">—</span>
                             )}
@@ -438,19 +494,36 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
               <h3 className="text-section font-semibold text-text-primary">
                 {clientDocs.length} {clientDocs.length === 1 ? 'documento' : 'documentos'}
               </h3>
-              <button
-                onClick={handleCreateDoc}
-                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-radius-sm text-small font-semibold hover:bg-accent-hover transition-colors"
-              >
-                <Plus size={14} /> Novo Documento
-              </button>
+              <div className="flex items-center gap-2">
+                {unlinkedDocs.length > 0 && (
+                  <button
+                    onClick={() => setLinkDocOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-bg-surface text-text-secondary border border-border rounded-radius-sm text-small font-semibold hover:border-accent/50 hover:text-text-primary transition-colors"
+                  >
+                    <Link2 size={14} /> Vincular existente
+                  </button>
+                )}
+                <button
+                  onClick={handleCreateDoc}
+                  className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-radius-sm text-small font-semibold hover:bg-accent-hover transition-colors"
+                >
+                  <Plus size={14} /> Novo Documento
+                </button>
+              </div>
             </div>
 
             {clientDocs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <BookOpen size={36} className="text-text-tertiary opacity-25 mb-3" />
                 <p className="text-body text-text-tertiary mb-4">Nenhum documento para este cliente ainda.</p>
-                <button onClick={handleCreateDoc} className="text-small text-accent hover:underline font-medium">Criar primeiro documento</button>
+                <div className="flex items-center gap-3">
+                  {unlinkedDocs.length > 0 && (
+                    <button onClick={() => setLinkDocOpen(true)} className="flex items-center gap-1.5 text-small text-text-secondary hover:text-text-primary font-medium border border-border px-3 py-1.5 rounded-radius-sm hover:border-accent/50 transition-colors">
+                      <Link2 size={12} /> Vincular documento ({unlinkedDocs.length})
+                    </button>
+                  )}
+                  <button onClick={handleCreateDoc} className="text-small text-accent hover:underline font-medium">Criar primeiro documento</button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-3 max-w-4xl">
@@ -487,48 +560,76 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
         {/* ── MÍDIA ── */}
         {activeTab === 'media' && (
           <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-section font-semibold text-text-primary">{files.length} {files.length === 1 ? 'arquivo' : 'arquivos'}</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-section font-semibold text-text-primary">
+                {files.length} {files.length === 1 ? 'arquivo' : 'arquivos'}
+              </h3>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-radius-sm text-small font-semibold hover:bg-accent-hover transition-colors"
+                disabled={uploading}
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-radius-sm text-small font-semibold hover:bg-accent-hover disabled:opacity-60 transition-colors"
               >
-                <UploadCloud size={14} /> Enviar Arquivo
+                <UploadCloud size={14} /> {uploading ? 'Enviando...' : 'Enviar Arquivo'}
               </button>
             </div>
-            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.rar"
+              className="hidden"
+              onChange={e => handleUpload(e.target.files)}
+            />
+
+            {/* Error banner */}
+            {uploadError && (
+              <div className="mb-4 px-4 py-3 bg-status-red/10 border border-status-red/30 rounded-radius-sm flex items-start gap-3">
+                <AlertCircle size={15} className="text-status-red shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-small font-semibold text-status-red">Erro no upload</p>
+                  <p className="text-[11px] text-status-red/80 mt-0.5 break-words">{uploadError}</p>
+                  <p className="text-[11px] text-text-tertiary mt-1.5">
+                    Verifique se o bucket <code className="font-mono bg-bg-app px-1 rounded border border-border">client-files</code> existe no Supabase Storage com acesso público habilitado.
+                  </p>
+                </div>
+                <button onClick={() => setUploadError(null)} className="text-status-red/50 hover:text-status-red shrink-0">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
 
             {/* Drop zone */}
             <div
               onDragOver={e => { e.preventDefault(); setIsDragOver(true) }}
               onDragLeave={() => setIsDragOver(false)}
               onDrop={e => { e.preventDefault(); setIsDragOver(false); handleUpload(e.dataTransfer.files) }}
-              onClick={() => files.length === 0 && fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-radius-md transition-colors mb-5 ${
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-radius-md transition-all mb-5 cursor-pointer ${
                 isDragOver
                   ? 'border-accent bg-accent-light'
-                  : files.length === 0
-                  ? 'border-border hover:border-accent/50 hover:bg-bg-app cursor-pointer'
-                  : 'border-border/50'
-              } ${files.length === 0 ? 'p-10 flex flex-col items-center justify-center' : 'p-3'}`}
+                  : 'border-border hover:border-accent/50 hover:bg-bg-surface-raised/50'
+              } ${files.length === 0 ? 'p-10 flex flex-col items-center justify-center' : 'py-3 flex items-center justify-center'}`}
             >
               {files.length === 0 ? (
                 <>
-                  <UploadCloud size={32} className={`mb-3 transition-colors ${isDragOver ? 'text-accent' : 'text-text-tertiary opacity-40'}`} />
+                  <UploadCloud size={36} className={`mb-3 transition-colors ${isDragOver ? 'text-accent' : 'text-text-tertiary opacity-30'}`} />
                   <p className="text-body text-text-secondary font-medium">
-                    {uploading ? 'Enviando...' : 'Arraste arquivos ou clique para enviar'}
+                    {uploading ? 'Enviando arquivos...' : 'Arraste arquivos ou clique para enviar'}
                   </p>
-                  <p className="text-small text-text-tertiary mt-1">PDFs, imagens, planilhas, contratos…</p>
+                  <p className="text-small text-text-tertiary mt-1.5">Imagens, vídeos, PDFs, planilhas, contratos…</p>
                 </>
               ) : (
-                <p className="text-small text-text-tertiary text-center">
-                  {isDragOver ? '📂 Solte para adicionar' : uploading ? 'Enviando...' : 'Arraste mais arquivos aqui'}
+                <p className="text-small text-text-tertiary">
+                  {isDragOver ? '📂 Solte para adicionar' : uploading ? 'Enviando...' : '+ Arraste mais arquivos aqui'}
                 </p>
               )}
             </div>
 
             {filesLoading ? (
-              <div className="text-small text-text-tertiary text-center py-8">Carregando arquivos...</div>
+              <div className="flex items-center justify-center py-12 gap-2 text-text-tertiary">
+                <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                <span className="text-small">Carregando arquivos...</span>
+              </div>
             ) : (
               <div className="grid grid-cols-4 gap-3 max-w-4xl">
                 {files.map(file => (
@@ -536,7 +637,10 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                     key={file.id}
                     name={file.name}
                     clientId={client.id}
-                    onDelete={() => deleteFile(client.id, file.name)}
+                    onDelete={async () => {
+                      try { await deleteFile(client.id, file.name) }
+                      catch (err) { console.error(err) }
+                    }}
                     getUrl={() => getPublicUrl(client.id, file.name)}
                   />
                 ))}
@@ -545,6 +649,149 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
           </div>
         )}
       </div>
+
+      {/* ── Task Detail Modal ── */}
+      {selectedTask && (
+        <div className="fixed inset-0 z-[99999] bg-black/40 flex items-center justify-center p-4" onClick={() => setSelectedTask(null)}>
+          <div className="bg-bg-surface rounded-radius-md shadow-modal w-full max-w-lg animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <PriorityBars priority={selectedTask.priority} />
+                <div className="flex-1 min-w-0">
+                  <h3 className={`text-body-lg font-semibold leading-snug ${selectedTask.is_done ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
+                    {selectedTask.title}
+                  </h3>
+                  {selectedTask.is_done && (
+                    <p className="text-[11px] text-accent mt-0.5 flex items-center gap-1">
+                      <CheckCircle2 size={11} /> Concluída
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setSelectedTask(null)} className="p-1.5 rounded hover:bg-bg-app text-text-tertiary hover:text-text-secondary transition-colors shrink-0 ml-2">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {selectedTask.description && (
+                <div>
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-2">Descrição</div>
+                  <p className="text-small text-text-secondary leading-relaxed whitespace-pre-wrap bg-bg-app rounded-radius-sm border border-border px-3 py-2.5">
+                    {selectedTask.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Status</div>
+                  {(() => {
+                    const cfg = STATUS_CONFIG[selectedTask.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG['A fazer']
+                    return <span className={`inline-flex text-[11px] px-2 py-1 rounded-full border font-medium ${cfg.color}`}>{selectedTask.status}</span>
+                  })()}
+                </div>
+                <div>
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Prioridade</div>
+                  <div className="flex items-center gap-2">
+                    <PriorityBars priority={selectedTask.priority} />
+                    <span className="text-small text-text-secondary">{PRIORITY_LABEL[selectedTask.priority as 1 | 2 | 3] ?? '—'}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Prazo</div>
+                  {selectedTask.deadline
+                    ? <DeadlineBadge deadline={selectedTask.deadline} isDone={selectedTask.is_done} />
+                    : <span className="text-small text-text-tertiary italic">Sem prazo</span>
+                  }
+                </div>
+                <div>
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Responsável</div>
+                  <span className="text-small text-text-secondary">
+                    {selectedTask.assigned_to
+                      ? TEAM_USERS.find(u => u.email === selectedTask.assigned_to)?.label ?? selectedTask.assigned_to.split('@')[0]
+                      : <span className="italic text-text-tertiary">Não atribuído</span>
+                    }
+                  </span>
+                </div>
+                <div>
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Tempo estimado</div>
+                  <span className="text-mono text-small text-text-secondary">{selectedTask.estimated_minutes}m</span>
+                </div>
+                {selectedTask.is_recurrent && (
+                  <div>
+                    <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Recorrência</div>
+                    <span className="text-small text-accent font-medium">Tarefa recorrente</span>
+                  </div>
+                )}
+              </div>
+
+              {selectedTask.file_url && (
+                <div>
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Arquivo anexado</div>
+                  <a href={selectedTask.file_url} target="_blank" rel="noopener noreferrer" className="text-small text-accent hover:underline flex items-center gap-1.5">
+                    <ExternalLink size={12} /> Ver arquivo
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-3 border-t border-border bg-bg-surface-raised rounded-b-radius-md flex justify-end">
+              <button onClick={() => setSelectedTask(null)} className="px-4 py-1.5 text-small text-text-secondary hover:text-text-primary transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Link Document Modal ── */}
+      {linkDocOpen && (
+        <div className="fixed inset-0 z-[99999] bg-black/40 flex items-center justify-center p-4" onClick={() => setLinkDocOpen(false)}>
+          <div className="bg-bg-surface rounded-radius-md shadow-modal w-full max-w-md animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="text-section font-bold text-text-primary flex items-center gap-2">
+                <Link2 size={16} className="text-accent" /> Vincular Documento
+              </h3>
+              <button onClick={() => setLinkDocOpen(false)} className="p-1.5 rounded hover:bg-bg-app text-text-tertiary">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="px-6 pt-3 pb-1 text-small text-text-tertiary">
+              Selecione um documento sem cliente associado para vinculá-lo a <strong className="text-text-primary">{client.name}</strong>.
+            </p>
+            <div className="px-2 py-2 max-h-72 overflow-y-auto">
+              {unlinkedDocs.length === 0 ? (
+                <p className="text-small text-text-tertiary text-center py-8 italic">Nenhum documento sem cliente.</p>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {unlinkedDocs.map(doc => (
+                    <button
+                      key={doc.id}
+                      onClick={() => handleLinkDoc(doc.id)}
+                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-bg-app rounded transition-colors text-left"
+                    >
+                      <span className="text-lg">{doc.icon ?? '📄'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-small font-medium text-text-primary truncate">{doc.title || 'Sem título'}</p>
+                        <p className="text-[11px] text-text-tertiary">
+                          {format(new Date(doc.updated_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-accent font-semibold shrink-0">Vincular →</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-3 border-t border-border bg-bg-surface-raised rounded-b-radius-md flex justify-end">
+              <button onClick={() => setLinkDocOpen(false)} className="px-4 py-1.5 text-small text-text-secondary hover:text-text-primary transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Document Editor Modal ── */}
       {openDoc && (
