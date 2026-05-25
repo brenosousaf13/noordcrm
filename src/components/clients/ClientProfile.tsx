@@ -20,6 +20,7 @@ interface ClientProfileProps {
   tasks: Task[]
   onEdit: () => void
   onDelete: () => void
+  onNavigateToDoc: (docId: string) => void
 }
 
 type Tab = 'overview' | 'tasks' | 'docs' | 'media'
@@ -107,7 +108,7 @@ function FileCard({ name, onDelete, getUrl }: { name: string; clientId: string; 
   )
 }
 
-export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfileProps) {
+export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc }: ClientProfileProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
   const [taskAssigneeFilter, setTaskAssigneeFilter] = useState<string>('all')
@@ -548,7 +549,17 @@ export function ClientProfile({ client, tasks, onEdit, onDelete }: ClientProfile
                       ) : (
                         <span className="flex items-center gap-1 text-[10px] text-text-tertiary"><Lock size={10} /> Privado</span>
                       )}
-                      <ExternalLink size={10} className="text-text-tertiary ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span
+                          role="button"
+                          title="Abrir na página de Docs"
+                          onClick={e => { e.stopPropagation(); onNavigateToDoc(doc.id) }}
+                          className="p-0.5 rounded hover:bg-bg-app text-text-tertiary hover:text-accent transition-colors cursor-pointer"
+                        >
+                          <BookOpen size={11} />
+                        </span>
+                        <ExternalLink size={10} className="text-text-tertiary" />
+                      </div>
                     </div>
                   </button>
                 ))}

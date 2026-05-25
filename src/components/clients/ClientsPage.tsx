@@ -9,7 +9,11 @@ type Client = Database['public']['Tables']['clients']['Row']
 
 const COLORS = ['#4FFFB0', '#FF4444', '#FFAA00', '#4488FF', '#AA44FF', '#FF007F']
 
-export function ClientsPage() {
+interface ClientsPageProps {
+  onNavigateToDoc: (docId: string) => void
+}
+
+export function ClientsPage({ onNavigateToDoc }: ClientsPageProps) {
   const { clients, loading, addClient, removeClient, updateClient } = useClients()
   const { tasks } = useTasks()
   const [searchTerm, setSearchTerm] = useState('')
@@ -154,6 +158,7 @@ export function ClientsPage() {
             tasks={tasks}
             onEdit={() => setEditingClient(selectedClient)}
             onDelete={() => handleDelete(selectedClient.id)}
+            onNavigateToDoc={onNavigateToDoc}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-8 gap-4">

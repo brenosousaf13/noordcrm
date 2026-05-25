@@ -16,6 +16,7 @@ export function Dashboard() {
   const { tasks, updateTask, addTask, removeTask } = useTasks()
   const { clients } = useClients()
   const [activeTab, setActiveTab] = useState('home')
+  const [pendingDocId, setPendingDocId] = useState<string | null>(null)
   const [activeDragData, setActiveDragData] = useState<any>(null)
   const [newTaskTrigger, setNewTaskTrigger] = useState(0)
   const [newNoteTrigger, setNewNoteTrigger] = useState(0)
@@ -180,9 +181,9 @@ export function Dashboard() {
 
       {/* Views Dinâmicas */}
       {activeTab === 'documentos' ? (
-        <DocumentsPage />
+        <DocumentsPage initialDocId={pendingDocId} onInitialDocConsumed={() => setPendingDocId(null)} />
       ) : activeTab === 'clientes' ? (
-        <ClientsPage />
+        <ClientsPage onNavigateToDoc={(docId) => { setActiveTab('documentos'); setPendingDocId(docId) }} />
       ) : activeTab === 'home' ? (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
            <main ref={mainRef} className="flex-1 p-5 h-screen overflow-hidden flex flex-col relative z-0 animate-in fade-in duration-300">

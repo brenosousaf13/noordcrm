@@ -1,15 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FileText } from 'lucide-react'
 import { useDocuments } from '../../hooks/useDocuments'
 import { useClients } from '../../hooks/useClients'
 import { DocumentSidebar } from './DocumentSidebar'
 import { DocumentEditor } from './DocumentEditor'
 
-export function DocumentsPage() {
+interface DocumentsPageProps {
+  initialDocId?: string | null
+  onInitialDocConsumed?: () => void
+}
+
+export function DocumentsPage({ initialDocId, onInitialDocConsumed }: DocumentsPageProps) {
   const { documents, loading, addDocument, updateDocument, removeDocument, generateShareToken, revokeShareToken } = useDocuments()
   const { clients } = useClients()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [filterClientId, setFilterClientId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (initialDocId) {
+      setSelectedId(initialDocId)
+      onInitialDocConsumed?.()
+    }
+  }, [initialDocId, onInitialDocConsumed])
 
   const selectedDocument = documents.find(d => d.id === selectedId) ?? null
 
