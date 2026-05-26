@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, CheckSquare, FileText, CircleUser, LogOut, BookOpen, Layers } from 'lucide-react'
+import { LayoutDashboard, Users, CircleUser, LogOut, BookOpen, Layers } from 'lucide-react'
 import { AgendaGrid } from '../components/dashboard/AgendaGrid'
 import { TasksBoard } from '../components/dashboard/TasksBoard'
 import { NotesPanel } from '../components/dashboard/NotesPanel'
 import { ClientsPage } from '../components/clients/ClientsPage'
 import { DocumentsPage } from '../components/documents/DocumentsPage'
 import { TemplatesPage } from '../components/templates/TemplatesPage'
-import { TasksPage } from '../components/tasks/TasksPage'
 import { DndContext, pointerWithin, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { useTasks } from '../hooks/useTasks'
@@ -21,8 +20,7 @@ export function Dashboard() {
   const [pendingDocId, setPendingDocId] = useState<string | null>(null)
   const [activeDragData, setActiveDragData] = useState<any>(null)
   const [newTaskTrigger, setNewTaskTrigger] = useState(0)
-  const [newNoteTrigger, setNewNoteTrigger] = useState(0)
-  const [isAgendaMinimized, setIsAgendaMinimized] = useState(false)
+const [isAgendaMinimized, setIsAgendaMinimized] = useState(false)
   const [agendaHeightPct, setAgendaHeightPct] = useState(45)
 
   const mainRef = useRef<HTMLElement>(null)
@@ -62,11 +60,6 @@ export function Dashboard() {
         setActiveTab('home')
         setNewTaskTrigger(prev => prev + 1)
       }
-      if (e.ctrlKey && e.key === 'q') {
-        e.preventDefault()
-        setActiveTab('home')
-        setNewNoteTrigger(prev => prev + 1)
-      }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
@@ -75,8 +68,6 @@ export function Dashboard() {
   const navItems = [
     { id: 'home', label: 'Home', icon: LayoutDashboard },
     { id: 'clientes', label: 'Clientes', icon: Users },
-    { id: 'tarefas', label: 'Tarefas', icon: CheckSquare },
-    { id: 'notas', label: 'Notas', icon: FileText },
     { id: 'documentos', label: 'Docs', icon: BookOpen },
     { id: 'modelos', label: 'Modelos', icon: Layers },
   ]
@@ -160,8 +151,6 @@ export function Dashboard() {
       {/* Views Dinâmicas */}
       {activeTab === 'modelos' ? (
         <TemplatesPage />
-      ) : activeTab === 'tarefas' ? (
-        <TasksPage />
       ) : activeTab === 'documentos' ? (
         <DocumentsPage initialDocId={pendingDocId} onInitialDocConsumed={() => setPendingDocId(null)} />
       ) : activeTab === 'clientes' ? (
@@ -213,7 +202,7 @@ export function Dashboard() {
                </div>
 
                <div className="flex-1 min-w-0 flex flex-col h-full relative">
-                  <NotesPanel clients={clients} newNoteTrigger={newNoteTrigger} />
+                  <NotesPanel clients={clients} newNoteTrigger={0} />
                </div>
 
              </div>
