@@ -7,6 +7,7 @@ import { NotesPanel } from '../components/dashboard/NotesPanel'
 import { ClientsPage } from '../components/clients/ClientsPage'
 import { DocumentsPage } from '../components/documents/DocumentsPage'
 import { TemplatesPage } from '../components/templates/TemplatesPage'
+import { TasksPage } from '../components/tasks/TasksPage'
 import { DndContext, pointerWithin, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { useTasks } from '../hooks/useTasks'
@@ -184,6 +185,8 @@ export function Dashboard() {
       {/* Views Dinâmicas */}
       {activeTab === 'modelos' ? (
         <TemplatesPage />
+      ) : activeTab === 'tarefas' ? (
+        <TasksPage />
       ) : activeTab === 'documentos' ? (
         <DocumentsPage initialDocId={pendingDocId} onInitialDocConsumed={() => setPendingDocId(null)} />
       ) : activeTab === 'clientes' ? (
