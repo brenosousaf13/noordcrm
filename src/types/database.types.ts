@@ -195,6 +195,39 @@ export interface Database {
         }
         Relationships: []
       }
+      subtasks: {
+        Row: {
+          id: string
+          task_id: string
+          title: string
+          is_done: boolean
+          assigned_to: string | null
+          priority: 1 | 2 | 3
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          title: string
+          is_done?: boolean
+          assigned_to?: string | null
+          priority?: 1 | 2 | 3
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          task_id?: string
+          title?: string
+          is_done?: boolean
+          assigned_to?: string | null
+          priority?: 1 | 2 | 3
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           id: string

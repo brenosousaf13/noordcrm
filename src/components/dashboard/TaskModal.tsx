@@ -4,6 +4,7 @@ import { X, Repeat, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database.types'
 import { format } from 'date-fns'
+import { SubtasksSection } from './SubtasksSection'
 
 type Task = Database['public']['Tables']['tasks']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
@@ -185,6 +186,9 @@ export function TaskModal({ task, clients, currentUserEmail, onSave, onDelete, o
                    <input type="date" value={draftDeadlineDate} onChange={e => setDraftDeadlineDate(e.target.value)} className="w-full text-small px-2 py-1.5 bg-bg-surface border border-border rounded-radius-sm focus:border-accent outline-none text-text-secondary font-mono" />
                  </div>
                </div>
+
+               {/* Subtarefas — só visível ao editar */}
+               {task?.id && <SubtasksSection taskId={task.id} />}
 
                {/* Toggle opções avançadas */}
                <button
