@@ -178,8 +178,9 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
   return (
     <div className="flex-1 flex flex-col h-full bg-bg-app overflow-hidden">
       {/* ── Profile Header ── */}
-      <div className="border-b shrink-0" style={{ background: `linear-gradient(135deg, ${client.color}18 0%, ${client.color}06 100%)`, borderColor: `${client.color}30` }}>
-        <div className="px-6 pt-5 pb-4">
+      <div className="shrink-0">
+        {/* Faixa colorida: nome + botões + contatos */}
+        <div className="px-6 pt-5 pb-4 border-b" style={{ background: `linear-gradient(135deg, ${client.color}18 0%, ${client.color}06 100%)`, borderColor: `${client.color}30` }}>
           <div className="flex items-end justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-radius-md border-2 border-bg-surface shadow-raised" style={{ backgroundColor: client.color }} />
@@ -217,7 +218,8 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
             )}
           </div>
         </div>
-        <div className="px-6 flex items-center gap-0 border-t border-border">
+        {/* Barra de abas — fundo branco */}
+        <div className="bg-bg-surface border-b border-border px-6 flex items-center gap-0">
           {tabs.map(tab => {
             const Icon = tab.icon
             const active = activeTab === tab.id
