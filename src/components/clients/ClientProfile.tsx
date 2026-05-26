@@ -5,13 +5,14 @@ import {
   X, Clock, AlertCircle, CheckCircle2, Circle, UploadCloud,
   ExternalLink, Building2, Globe, Lock, Link2, Film
 } from 'lucide-react'
-import { useSubtasks } from '../../hooks/useSubtasks'
+import { TaskModal } from '../dashboard/TaskModal'
 import { format, isToday, isTomorrow, isPast, differenceInCalendarDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useClientFiles } from '../../hooks/useClientFiles'
 import { DocumentEditor } from '../documents/DocumentEditor'
 import type { Database } from '../../types/database.types'
 import { useDocuments } from '../../hooks/useDocuments'
+import { useClients } from '../../hooks/useClients'
 import { ClientTasksTab } from './ClientTasksTab'
 
 type Client = Database['public']['Tables']['clients']['Row']
@@ -24,6 +25,8 @@ interface ClientProfileProps {
   onDelete: () => void
   onNavigateToDoc: (docId: string) => void
   addTask?: (payload: any) => Promise<any>
+  updateTask: (id: string, payload: any) => Promise<void>
+  removeTask: (id: string) => Promise<void>
 }
 
 type Tab = 'overview' | 'tasks' | 'docs' | 'media'
@@ -35,13 +38,7 @@ const STATUS_CONFIG = {
   'Atrasado': { color: 'text-status-red bg-status-red/10 border-status-red/20', icon: AlertCircle },
 }
 
-const TEAM_USERS = [
-  { email: 'brenosousaf13@gmail.com', label: 'Breno' },
-  { email: 'lucassousaf01@gmail.com', label: 'Lucas' },
-  { email: 'marceladneves@yahoo.com.br', label: 'Marcela' },
-]
 
-const PRIORITY_LABEL = { 1: 'Baixa', 2: 'Média', 3: 'Alta' } as const
 
 function DeadlineBadge({ deadline, isDone }: { deadline: string | null; isDone: boolean }) {
   if (!deadline) return null
@@ -110,9 +107,9 @@ function FileCard({ name, onDelete, getUrl }: { name: string; clientId: string; 
   )
 }
 
-export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc, addTask }: ClientProfileProps) {
+export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc, addTask, updateTask, removeTask }: ClientProfileProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null | false>(false)
   const [openDocId, setOpenDocId] = useState<string | null>(null)
   const [linkDocOpen, setLinkDocOpen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -120,12 +117,7 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { subtasks, fetchSubtasks, toggleSubtask } = useSubtasks(selectedTask?.id ?? '')
-
-  useEffect(() => {
-    if (selectedTask?.id) fetchSubtasks()
-  }, [selectedTask?.id])
-
+  const { clients: allClients } = useClients()
   const { documents, addDocument, updateDocument, generateShareToken, revokeShareToken } = useDocuments()
   const { files, loading: filesLoading, fetchFiles, uploadFile, deleteFile, getPublicUrl } = useClientFiles()
 
@@ -138,7 +130,7 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
   }, [activeTab, client.id, fetchFiles])
 
   useEffect(() => {
-    setSelectedTask(null)
+    setEditingTask(false)
     setOpenDocId(null)
     setUploadError(null)
   }, [client.id])
@@ -282,7 +274,7 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
                     {clientTasks.slice(0, 4).map(task => {
                       const cfg = STATUS_CONFIG[task.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG['A fazer']
                       return (
-                        <button key={task.id} onClick={() => setSelectedTask(task)} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-bg-app transition-colors text-left">
+                        <button key={task.id} onClick={() => setEditingTask(task)} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-bg-app transition-colors text-left">
                           <PriorityBars priority={task.priority} />
                           <span className="flex-1 text-small text-text-primary truncate">{task.title}</span>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cfg.color}`}>{task.status}</span>
@@ -370,7 +362,8 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
             client={client}
             tasks={tasks}
             addTask={addTask}
-            onTaskClick={setSelectedTask}
+            updateTask={updateTask}
+            removeTask={removeTask}
           />
         )}
 
@@ -547,137 +540,15 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
         )}
       </div>
 
-      {/* ── Task Detail Modal ── */}
-      {selectedTask && (
-        <div className="fixed inset-0 z-[99999] bg-black/40 flex items-center justify-center p-4" onClick={() => setSelectedTask(null)}>
-          <div className="bg-bg-surface rounded-radius-md shadow-modal w-full max-w-lg animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between px-6 py-4 border-b border-border">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <PriorityBars priority={selectedTask.priority} />
-                <div className="flex-1 min-w-0">
-                  <h3 className={`text-body-lg font-semibold leading-snug ${selectedTask.is_done ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
-                    {selectedTask.title}
-                  </h3>
-                  {selectedTask.is_done && (
-                    <p className="text-[11px] text-accent mt-0.5 flex items-center gap-1">
-                      <CheckCircle2 size={11} /> Concluída
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button onClick={() => setSelectedTask(null)} className="p-1.5 rounded hover:bg-bg-app text-text-tertiary hover:text-text-secondary transition-colors shrink-0 ml-2">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="px-6 py-5 space-y-5">
-              {selectedTask.description && (
-                <div>
-                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-2">Descrição</div>
-                  <p className="text-small text-text-secondary leading-relaxed whitespace-pre-wrap bg-bg-app rounded-radius-sm border border-border px-3 py-2.5">
-                    {selectedTask.description}
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                <div>
-                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Status</div>
-                  {(() => {
-                    const cfg = STATUS_CONFIG[selectedTask.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG['A fazer']
-                    return <span className={`inline-flex text-[11px] px-2 py-1 rounded-full border font-medium ${cfg.color}`}>{selectedTask.status}</span>
-                  })()}
-                </div>
-                <div>
-                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Prioridade</div>
-                  <div className="flex items-center gap-2">
-                    <PriorityBars priority={selectedTask.priority} />
-                    <span className="text-small text-text-secondary">{PRIORITY_LABEL[selectedTask.priority as 1 | 2 | 3] ?? '—'}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Prazo</div>
-                  {selectedTask.deadline
-                    ? <DeadlineBadge deadline={selectedTask.deadline} isDone={selectedTask.is_done} />
-                    : <span className="text-small text-text-tertiary italic">Sem prazo</span>
-                  }
-                </div>
-                <div>
-                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Responsável</div>
-                  <span className="text-small text-text-secondary">
-                    {selectedTask.assigned_to
-                      ? TEAM_USERS.find(u => u.email === selectedTask.assigned_to)?.label ?? selectedTask.assigned_to.split('@')[0]
-                      : <span className="italic text-text-tertiary">Não atribuído</span>
-                    }
-                  </span>
-                </div>
-                <div>
-                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Tempo estimado</div>
-                  <span className="text-mono text-small text-text-secondary">{selectedTask.estimated_minutes}m</span>
-                </div>
-                {selectedTask.is_recurrent && (
-                  <div>
-                    <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Recorrência</div>
-                    <span className="text-small text-accent font-medium">Tarefa recorrente</span>
-                  </div>
-                )}
-              </div>
-
-              {selectedTask.file_url && (
-                <div>
-                  <div className="text-[10px] text-text-tertiary uppercase tracking-wide mb-1.5">Arquivo anexado</div>
-                  <a href={selectedTask.file_url} target="_blank" rel="noopener noreferrer" className="text-small text-accent hover:underline flex items-center gap-1.5">
-                    <ExternalLink size={12} /> Ver arquivo
-                  </a>
-                </div>
-              )}
-
-              {subtasks.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-[10px] text-text-tertiary uppercase tracking-wide">
-                      Subtarefas
-                    </div>
-                    <span className="text-[10px] text-text-tertiary">
-                      {subtasks.filter(s => s.is_done).length}/{subtasks.length}
-                    </span>
-                  </div>
-                  {/* Progress bar */}
-                  <div className="w-full h-1 bg-bg-app rounded-full mb-3 overflow-hidden">
-                    <div
-                      className="h-full bg-accent rounded-full transition-all duration-300"
-                      style={{ width: `${(subtasks.filter(s => s.is_done).length / subtasks.length) * 100}%` }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    {subtasks.map(sub => (
-                      <div key={sub.id} className="flex items-center gap-2.5">
-                        <button
-                          onClick={() => toggleSubtask(sub.id, !sub.is_done)}
-                          className="shrink-0 transition-colors"
-                        >
-                          {sub.is_done
-                            ? <CheckCircle2 size={15} className="text-accent" />
-                            : <Circle size={15} className="text-text-tertiary hover:text-accent transition-colors" />
-                          }
-                        </button>
-                        <span className={`text-small leading-tight ${sub.is_done ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
-                          {sub.title}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-3 border-t border-border bg-bg-surface-raised rounded-b-radius-md flex justify-end">
-              <button onClick={() => setSelectedTask(null)} className="px-4 py-1.5 text-small text-text-secondary hover:text-text-primary transition-colors">
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── Task Edit Modal (overview tab) ── */}
+      {editingTask !== false && editingTask !== null && (
+        <TaskModal
+          task={editingTask}
+          clients={allClients}
+          onClose={() => setEditingTask(false)}
+          onDelete={async () => { await removeTask(editingTask.id); setEditingTask(false) }}
+          onSave={async payload => { await updateTask(editingTask.id, payload) }}
+        />
       )}
 
       {/* ── Link Document Modal ── */}

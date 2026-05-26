@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Plus, X, Layers, User, CheckCircle2, Clock, AlertCircle, Circle,
+  Plus, X, Layers, Check, Clock, Zap, Paperclip,
   ChevronRight, MoreHorizontal, Trash2, Edit2, CheckSquare
 } from 'lucide-react'
 import { useTaskLists, type TaskList } from '../../hooks/useTaskLists'
@@ -15,18 +15,24 @@ type Client = Database['public']['Tables']['clients']['Row']
 type Task = Database['public']['Tables']['tasks']['Row']
 type TaskFilter = 'all' | 'A fazer' | 'Fazendo' | 'Concluído' | 'Atrasado'
 
-const STATUS_CONFIG = {
-  'A fazer': { color: 'text-status-blue bg-status-blue/10 border-status-blue/20', icon: Circle },
-  'Fazendo': { color: 'text-status-orange bg-status-orange/10 border-status-orange/20', icon: Clock },
-  'Concluído': { color: 'text-accent bg-accent-light border-accent/20', icon: CheckCircle2 },
-  'Atrasado': { color: 'text-status-red bg-status-red/10 border-status-red/20', icon: AlertCircle },
+interface ContextMenuState { x: number; y: number; task: Task }
+
+const USER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'brenosousaf13@gmail.com':   { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200' },
+  'lucassousaf01@gmail.com':   { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  'marceladneves@yahoo.com.br':{ bg: 'bg-purple-50',  text: 'text-purple-700',  border: 'border-purple-200' },
 }
 
 const TEAM_USERS = [
-  { email: 'brenosousaf13@gmail.com', label: 'Breno' },
-  { email: 'lucassousaf01@gmail.com', label: 'Lucas' },
+  { email: 'brenosousaf13@gmail.com',    label: 'Breno' },
+  { email: 'lucassousaf01@gmail.com',    label: 'Lucas' },
   { email: 'marceladneves@yahoo.com.br', label: 'Marcela' },
 ]
+
+function getUserName(email: string | null) {
+  if (!email) return null
+  return TEAM_USERS.find(u => u.email === email)?.label ?? email.split('@')[0]
+}
 
 function DeadlineBadge({ deadline, isDone }: { deadline: string | null; isDone: boolean }) {
   if (!deadline) return null
@@ -39,75 +45,119 @@ function DeadlineBadge({ deadline, isDone }: { deadline: string | null; isDone: 
   else if (isTomorrow(ref)) label = 'AMANHÃ'
   else if (days >= 2 && days <= 6) label = format(ref, 'EEE', { locale: ptBR }).toUpperCase().replace('.', '')
   return (
-    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${isRed ? 'text-status-red bg-[#FEE2E2] border-[#FCA5A5]' : 'text-text-tertiary bg-bg-app border-border'}`}>
+    <span className={`text-mono text-[9px] font-bold px-1.5 py-0.5 rounded border text-center leading-tight ${isRed ? 'text-status-red bg-[#FEE2E2] border-[#FCA5A5]' : isDone ? 'text-text-tertiary bg-bg-surface-raised border-border opacity-50' : 'text-text-secondary bg-bg-surface-raised border-border'}`}>
       {label}
     </span>
   )
 }
 
-function PriorityBars({ priority }: { priority: 1 | 2 | 3 }) {
+function TaskCard({
+  task, clientColor, onEdit, onToggleDone, onContextMenu,
+}: {
+  task: Task
+  clientColor: string
+  onEdit: () => void
+  onToggleDone: () => void
+  onContextMenu: (e: React.MouseEvent) => void
+}) {
+  const isDone = task.status === 'Concluído' || task.is_done
+  const userColors = task.assigned_to ? USER_COLORS[task.assigned_to] : null
+  const userName = getUserName(task.assigned_to)
+
   return (
-    <div className="flex gap-[2px] items-end">
-      <div className={`w-[3px] h-1.5 rounded-full ${priority >= 1 ? (priority === 1 ? 'bg-status-yellow' : priority === 2 ? 'bg-status-orange' : 'bg-status-red') : 'bg-border'}`} />
-      <div className={`w-[3px] h-2.5 rounded-full ${priority >= 2 ? (priority === 2 ? 'bg-status-orange' : 'bg-status-red') : 'bg-border'}`} />
-      <div className={`w-[3px] h-3.5 rounded-full ${priority === 3 ? 'bg-status-red' : 'bg-border'}`} />
+    <div
+      onClick={onEdit}
+      onContextMenu={onContextMenu}
+      className={`bg-bg-surface rounded-radius-sm shadow-card border border-border border-l-4 hover:shadow-raised transition-all cursor-pointer flex relative overflow-hidden group ${isDone ? 'opacity-50 grayscale-[0.4]' : ''}`}
+      style={{ borderLeftColor: clientColor }}
+    >
+      {/* Checkbox */}
+      <div className="flex items-start pt-3 pl-3 pr-1 shrink-0">
+        <button
+          type="button"
+          onClick={e => { e.stopPropagation(); onToggleDone() }}
+          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+            isDone ? 'bg-accent border-accent text-white' : 'border-border hover:border-accent hover:bg-accent/10'
+          }`}
+          title={isDone ? 'Marcar como pendente' : 'Marcar como feito'}
+        >
+          {isDone && <Check size={11} strokeWidth={3} />}
+        </button>
+      </div>
+
+      {/* Conteúdo */}
+      <div className="flex-1 p-3 pl-2 flex flex-col min-w-0">
+        <h3 className={`text-body font-semibold leading-tight line-clamp-2 ${isDone ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
+          {task.title}
+        </h3>
+        {task.description && (
+          <p className="text-small text-text-tertiary mt-0.5 line-clamp-1">{task.description}</p>
+        )}
+        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+          {userName && (
+            <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm border flex items-center gap-1 ${
+              userColors ? `${userColors.bg} ${userColors.text} ${userColors.border}` : 'bg-bg-surface-raised text-text-secondary border-border'
+            }`}>
+              👤 {userName}
+            </span>
+          )}
+          {isDone && (
+            <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm bg-green-100 text-green-700 border border-green-200">
+              FEITO
+            </span>
+          )}
+          {task.is_recurrent && (
+            <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm bg-[#EEF2FC] text-[#3355A0] border border-[#D5E0F9] flex items-center gap-1">
+              <Zap size={9} fill="currentColor" /> Recorrente
+            </span>
+          )}
+          {task.file_url && (
+            <a
+              href={task.file_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-[9px] text-text-secondary hover:text-accent px-1.5 py-0.5 rounded-sm bg-bg-surface-raised border border-border flex items-center gap-1"
+            >
+              <Paperclip size={9} /> Anexo
+            </a>
+          )}
+          <span className={`text-mono text-[10px] font-semibold px-1.5 py-0.5 rounded-sm flex items-center gap-1 ${isDone ? 'text-text-tertiary border border-border line-through' : 'text-accent bg-accent-light'}`}>
+            <Clock size={9} /> {task.estimated_minutes}m
+          </span>
+        </div>
+      </div>
+
+      {/* Coluna direita: deadline + prioridade */}
+      <div className="flex flex-col items-center justify-between shrink-0 p-2 pl-1 border-l border-border/50 gap-2">
+        <DeadlineBadge deadline={task.deadline} isDone={isDone} />
+        {!isDone && (
+          <div className="flex gap-[3px] items-end mt-auto" title={task.priority === 3 ? 'Alta' : task.priority === 2 ? 'Média' : 'Baixa'}>
+            <div className={`w-[3px] h-1.5 rounded-full ${task.priority === 1 ? 'bg-status-yellow' : task.priority === 2 ? 'bg-status-orange' : 'bg-status-red'}`} />
+            <div className={`w-[3px] h-2.5 rounded-full ${task.priority >= 2 ? (task.priority === 2 ? 'bg-status-orange' : 'bg-status-red') : 'bg-transparent'}`} />
+            <div className={`w-[3px] h-3.5 rounded-full ${task.priority === 3 ? 'bg-status-red' : 'bg-transparent'}`} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-function TaskRow({ task, onClick }: { task: Task; onClick: () => void }) {
-  const cfg = STATUS_CONFIG[task.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG['A fazer']
-  return (
-    <tr onClick={onClick} className="border-b border-border/50 hover:bg-bg-app transition-colors cursor-pointer last:border-0">
-      <td className="px-4 py-3"><PriorityBars priority={task.priority} /></td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          {task.is_done && <CheckCircle2 size={13} className="text-accent shrink-0" />}
-          <span className={`text-small ${task.is_done ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>{task.title}</span>
-        </div>
-        {task.description && <p className="text-[11px] text-text-tertiary mt-0.5 line-clamp-1">{task.description}</p>}
-      </td>
-      <td className="px-4 py-3">
-        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cfg.color}`}>{task.status}</span>
-      </td>
-      <td className="px-4 py-3"><DeadlineBadge deadline={task.deadline} isDone={task.is_done} /></td>
-      <td className="px-4 py-3">
-        {task.assigned_to
-          ? <span className="text-small text-text-tertiary">{TEAM_USERS.find(u => u.email === task.assigned_to)?.label ?? task.assigned_to.split('@')[0]}</span>
-          : <span className="text-[11px] text-text-tertiary italic">—</span>
-        }
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-mono text-small text-text-tertiary">{task.estimated_minutes}m</span>
-      </td>
-    </tr>
-  )
-}
-
-const TABLE_HEADERS = (
-  <thead className="border-b border-border bg-bg-app/40">
-    <tr>
-      <th className="px-4 py-2 text-label text-text-tertiary uppercase tracking-wide w-8">P</th>
-      <th className="px-4 py-2 text-label text-text-tertiary uppercase tracking-wide">Tarefa</th>
-      <th className="px-4 py-2 text-label text-text-tertiary uppercase tracking-wide">Status</th>
-      <th className="px-4 py-2 text-label text-text-tertiary uppercase tracking-wide">Prazo</th>
-      <th className="px-4 py-2 text-label text-text-tertiary uppercase tracking-wide">Responsável</th>
-      <th className="px-4 py-2 text-label text-text-tertiary uppercase tracking-wide w-16">Tempo</th>
-    </tr>
-  </thead>
-)
-
 function ListSection({
-  list, tasks, collapsed, onToggleCollapse, onAddTask, onRename, onDelete, onTaskClick,
+  list, tasks, clientColor, collapsed, onToggleCollapse, onAddTask, onRename, onDelete,
+  onEditTask, onToggleTask, onContextMenu,
 }: {
   list: TaskList
   tasks: Task[]
+  clientColor: string
   collapsed: boolean
   onToggleCollapse: () => void
   onAddTask: () => void
   onRename: (name: string) => void
   onDelete: () => void
-  onTaskClick: (task: Task) => void
+  onEditTask: (task: Task) => void
+  onToggleTask: (task: Task) => void
+  onContextMenu: (e: React.MouseEvent, task: Task) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -134,11 +184,7 @@ function ListSection({
     <div className="bg-bg-surface rounded-radius-md border border-border shadow-card overflow-visible mb-4">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 bg-bg-surface-raised rounded-t-radius-md group border-b border-border/60">
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="shrink-0 text-text-tertiary hover:text-text-primary transition-colors"
-        >
+        <button type="button" onClick={onToggleCollapse} className="shrink-0 text-text-tertiary hover:text-text-primary transition-colors">
           <ChevronRight size={13} className={`transition-transform duration-150 ${!collapsed ? 'rotate-90' : ''}`} />
         </button>
 
@@ -205,28 +251,28 @@ function ListSection({
         </div>
       </div>
 
-      {/* Task table */}
+      {/* Cards */}
       {!collapsed && (
         tasks.length === 0 ? (
           <div className="px-6 py-6 text-center">
             <p className="text-small text-text-tertiary italic">Nenhuma tarefa nesta lista.</p>
-            <button
-              type="button"
-              onClick={onAddTask}
-              className="mt-2 text-[11px] text-accent hover:underline font-medium"
-            >
+            <button type="button" onClick={onAddTask} className="mt-2 text-[11px] text-accent hover:underline font-medium">
               + Adicionar tarefa
             </button>
           </div>
         ) : (
-          <table className="w-full text-left">
-            {TABLE_HEADERS}
-            <tbody>
-              {tasks.map(task => (
-                <TaskRow key={task.id} task={task} onClick={() => onTaskClick(task)} />
-              ))}
-            </tbody>
-          </table>
+          <div className="p-3 space-y-2">
+            {tasks.map(task => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                clientColor={clientColor}
+                onEdit={() => onEditTask(task)}
+                onToggleDone={() => onToggleTask(task)}
+                onContextMenu={e => onContextMenu(e, task)}
+              />
+            ))}
+          </div>
         )
       )}
     </div>
@@ -237,10 +283,11 @@ interface ClientTasksTabProps {
   client: Client
   tasks: Task[]
   addTask?: (payload: any) => Promise<any>
-  onTaskClick: (task: Task) => void
+  updateTask: (id: string, payload: any) => Promise<void>
+  removeTask: (id: string) => Promise<void>
 }
 
-export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTasksTabProps) {
+export function ClientTasksTab({ client, tasks, addTask, updateTask, removeTask }: ClientTasksTabProps) {
   const { lists, addList, updateList, deleteList } = useTaskLists(client.id)
   const { clients: allClients } = useClients()
 
@@ -249,20 +296,28 @@ export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTa
   const [collapsedLists, setCollapsedLists] = useState<Set<string>>(new Set())
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
   const [templateSavedName, setTemplateSavedName] = useState<string | null>(null)
-  const [taskModalOpen, setTaskModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null | false>(false)
   const [createListId, setCreateListId] = useState<string | null>(null)
   const [addingList, setAddingList] = useState(false)
   const [newListName, setNewListName] = useState('')
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const newListInputRef = useRef<HTMLInputElement>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { if (addingList) newListInputRef.current?.focus() }, [addingList])
 
-  // Reset filters when client changes
   useEffect(() => {
     setTaskFilter('all')
     setAssigneeFilter('all')
     setCollapsedLists(new Set())
+    setEditingTask(false)
   }, [client.id])
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null)
+    if (contextMenu) document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [contextMenu])
 
   const clientTasks = tasks.filter(t => t.client_id === client.id)
   const filteredTasks = clientTasks
@@ -297,9 +352,41 @@ export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTa
     })
   }
 
-  const handleOpenTaskModal = (listId: string | null) => {
+  const handleOpenNewTask = (listId: string | null) => {
     setCreateListId(listId)
-    setTaskModalOpen(true)
+    setEditingTask(null)
+  }
+
+  const handleEditTask = (task: Task) => {
+    setCreateListId(null)
+    setEditingTask(task)
+  }
+
+  const handleToggleTask = useCallback((task: Task) => {
+    const nowDone = !task.is_done
+    updateTask(task.id, {
+      is_done: nowDone,
+      status: nowDone ? 'Concluído' : 'A fazer',
+    })
+  }, [updateTask])
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, task: Task) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, task })
+  }, [])
+
+  const handleDuplicate = async (task: Task) => {
+    if (!addTask) return
+    setContextMenu(null)
+    const { id: _id, created_at: _ca, ...rest } = task as any
+    await addTask({ ...rest, title: `${task.title} (cópia)`, scheduled_at: null, is_done: false, status: 'A fazer' })
+  }
+
+  const handleDelete = async (task: Task) => {
+    setContextMenu(null)
+    if (confirm(`Apagar "${task.title}"? Essa ação não pode ser desfeita.`)) {
+      await removeTask(task.id)
+    }
   }
 
   const handleCommitList = async () => {
@@ -349,7 +436,7 @@ export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTa
         <div className="flex items-center gap-3 shrink-0">
           {addTask && (
             <button
-              onClick={() => handleOpenTaskModal(null)}
+              onClick={() => handleOpenNewTask(null)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-small text-white bg-accent rounded-radius-sm hover:bg-accent-hover transition-colors shadow-card"
             >
               <Plus size={12} /> Nova Tarefa
@@ -362,7 +449,6 @@ export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTa
           >
             <Layers size={12} /> Salvar como Modelo
           </button>
-          <User size={12} className="text-text-tertiary" />
           <div className="flex items-center gap-1 bg-bg-surface border border-border rounded-radius-sm p-0.5">
             <button
               onClick={() => setAssigneeFilter('all')}
@@ -400,7 +486,7 @@ export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTa
             </button>
             {addTask && (
               <button
-                onClick={() => handleOpenTaskModal(null)}
+                onClick={() => handleOpenNewTask(null)}
                 className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-radius-sm text-small font-semibold hover:bg-accent-hover transition-colors shadow-card"
               >
                 <Plus size={13} /> Nova Tarefa
@@ -416,14 +502,17 @@ export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTa
           key={list.id}
           list={list}
           tasks={tasksByListId.get(list.id) ?? []}
+          clientColor={client.color}
           collapsed={collapsedLists.has(list.id)}
           onToggleCollapse={() => toggleCollapse(list.id)}
-          onAddTask={() => handleOpenTaskModal(list.id)}
+          onAddTask={() => handleOpenNewTask(list.id)}
           onRename={name => updateList(list.id, { name })}
           onDelete={() => {
             if (window.confirm(`Excluir a lista "${list.name}"?\n\nAs tarefas serão mantidas, mas ficarão sem lista.`)) deleteList(list.id)
           }}
-          onTaskClick={onTaskClick}
+          onEditTask={handleEditTask}
+          onToggleTask={handleToggleTask}
+          onContextMenu={handleContextMenu}
         />
       ))}
 
@@ -441,14 +530,18 @@ export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTa
               <p className="text-small text-text-tertiary italic">Nenhuma tarefa sem lista.</p>
             </div>
           ) : (
-            <table className="w-full text-left">
-              {TABLE_HEADERS}
-              <tbody>
-                {ungroupedTasks.map(task => (
-                  <TaskRow key={task.id} task={task} onClick={() => onTaskClick(task)} />
-                ))}
-              </tbody>
-            </table>
+            <div className="p-3 space-y-2">
+              {ungroupedTasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  clientColor={client.color}
+                  onEdit={() => handleEditTask(task)}
+                  onToggleDone={() => handleToggleTask(task)}
+                  onContextMenu={e => handleContextMenu(e, task)}
+                />
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -494,15 +587,49 @@ export function ClientTasksTab({ client, tasks, addTask, onTaskClick }: ClientTa
         )
       )}
 
-      {/* Task create modal */}
-      {taskModalOpen && addTask && (
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-[9999] bg-bg-surface border border-border rounded-radius-md shadow-modal py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={() => handleDuplicate(contextMenu.task)}
+            className="w-full text-left px-4 py-2.5 text-small font-medium text-text-primary hover:bg-bg-app transition-colors flex items-center gap-2"
+          >
+            <span>📋</span> Duplicar Tarefa
+          </button>
+          <div className="h-px bg-border mx-2 my-1" />
+          <button
+            onClick={() => handleDelete(contextMenu.task)}
+            className="w-full text-left px-4 py-2.5 text-small font-medium text-status-red hover:bg-status-red/5 transition-colors flex items-center gap-2"
+          >
+            <span>🗑️</span> Excluir Tarefa
+          </button>
+        </div>
+      )}
+
+      {/* Task Modal — create or edit */}
+      {editingTask !== false && (
         <TaskModal
-          task={null}
+          task={editingTask}
           clients={allClients}
           defaultClientId={client.id}
-          defaultListId={createListId ?? undefined}
-          onSave={async (payload) => { await addTask(payload) }}
-          onClose={() => { setTaskModalOpen(false); setCreateListId(null) }}
+          defaultListId={editingTask === null ? (createListId ?? undefined) : undefined}
+          onClose={() => { setEditingTask(false); setCreateListId(null) }}
+          onDelete={editingTask ? async () => {
+            await removeTask(editingTask.id)
+            setEditingTask(false)
+          } : undefined}
+          onSave={async payload => {
+            if (editingTask === null) {
+              if (addTask) await addTask(payload)
+            } else {
+              await updateTask(editingTask.id, payload)
+            }
+          }}
         />
       )}
 
