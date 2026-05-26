@@ -15,7 +15,7 @@ interface ClientsPageProps {
 
 export function ClientsPage({ onNavigateToDoc }: ClientsPageProps) {
   const { clients, loading, addClient, removeClient, updateClient } = useClients()
-  const { tasks } = useTasks()
+  const { tasks, addTask } = useTasks()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editingClient, setEditingClient] = useState<Partial<Client> | null>(null)
@@ -159,6 +159,7 @@ export function ClientsPage({ onNavigateToDoc }: ClientsPageProps) {
             onEdit={() => setEditingClient(selectedClient)}
             onDelete={() => handleDelete(selectedClient.id)}
             onNavigateToDoc={onNavigateToDoc}
+            addTask={addTask}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-8 gap-4">

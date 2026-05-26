@@ -13,6 +13,8 @@ interface TaskModalProps {
   task?: Task | null
   clients: Client[]
   currentUserEmail?: string
+  defaultClientId?: string
+  defaultListId?: string
   onSave: (payload: Partial<Task>) => Promise<void>
   onDelete?: () => Promise<void>
   onClose: () => void
@@ -25,7 +27,7 @@ const DURATION_OPTIONS = [
   { value: 120, label: '120 min (2h)' },
 ]
 
-export function TaskModal({ task, clients, currentUserEmail, onSave, onDelete, onClose }: TaskModalProps) {
+export function TaskModal({ task, clients, currentUserEmail, defaultClientId, defaultListId, onSave, onDelete, onClose }: TaskModalProps) {
   const teamUsers = [
     { id: 'brenosousaf13@gmail.com', name: 'Breno' },
     { id: 'lucassousaf01@gmail.com', name: 'Lucas' },
@@ -34,7 +36,7 @@ export function TaskModal({ task, clients, currentUserEmail, onSave, onDelete, o
 
   const [draftTitle, setDraftTitle] = useState(task?.title || '')
   const [draftDescription, setDraftDescription] = useState(task?.description || '')
-  const [draftClientId, setDraftClientId] = useState(task?.client_id || '')
+  const [draftClientId, setDraftClientId] = useState(task?.client_id || defaultClientId || '')
   const [draftEstimated, setDraftEstimated] = useState(task?.estimated_minutes || 60)
   const [draftPriority, setDraftPriority] = useState<1|2|3>(task?.priority || 2)
   const [draftStatus, setDraftStatus] = useState<'A fazer' | 'Concluído'>(
@@ -50,6 +52,7 @@ export function TaskModal({ task, clients, currentUserEmail, onSave, onDelete, o
     task?.deadline ? format(new Date(task.deadline.includes('T') ? task.deadline : task.deadline + 'T00:00:00'), 'yyyy-MM-dd') : ''
   )
   const [isUploading, setIsUploading] = useState(false)
+  const [draftListId] = useState<string | null>(task?.list_id ?? defaultListId ?? null)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   const formRef = useRef<HTMLFormElement>(null)
@@ -93,7 +96,8 @@ export function TaskModal({ task, clients, currentUserEmail, onSave, onDelete, o
         scheduled_at: task ? task.scheduled_at : null,
         start_date: null,
         deadline: draftDeadlineDate || null,
-        description: draftDescription || null
+        description: draftDescription || null,
+        list_id: draftListId || null,
       })
       onClose()
     } catch(err) {

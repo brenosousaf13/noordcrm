@@ -62,6 +62,7 @@ export interface Database {
           scheduled_at: string | null
           description: string | null
           recurrence: string | null
+          list_id: string | null
           created_at: string
         }
         Insert: {
@@ -80,6 +81,7 @@ export interface Database {
           scheduled_at?: string | null
           description?: string | null
           recurrence?: string | null
+          list_id?: string | null
           created_at?: string
         }
         Update: {
@@ -98,6 +100,7 @@ export interface Database {
           scheduled_at?: string | null
           description?: string | null
           recurrence?: string | null
+          list_id?: string | null
           created_at?: string
         }
         Relationships: []
@@ -192,6 +195,33 @@ export interface Database {
           estimated_minutes?: number
           assigned_to?: string | null
           sort_order?: number
+        }
+        Relationships: []
+      }
+      task_lists: {
+        Row: {
+          id: string
+          client_id: string
+          name: string
+          color: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          name: string
+          color?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          name?: string
+          color?: string | null
+          sort_order?: number
+          created_at?: string
         }
         Relationships: []
       }

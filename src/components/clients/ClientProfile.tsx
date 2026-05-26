@@ -3,15 +3,15 @@ import {
   Mail, Phone, MapPin, FileText, Edit3, Trash2,
   CheckSquare, BookOpen, ImageIcon, Plus, Download,
   X, Clock, AlertCircle, CheckCircle2, Circle, UploadCloud,
-  ExternalLink, Building2, Globe, Lock, Link2, User, Film, Layers
+  ExternalLink, Building2, Globe, Lock, Link2, Film
 } from 'lucide-react'
-import { SaveTemplateModal } from '../templates/SaveTemplateModal'
 import { format, isToday, isTomorrow, isPast, differenceInCalendarDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useClientFiles } from '../../hooks/useClientFiles'
 import { DocumentEditor } from '../documents/DocumentEditor'
 import type { Database } from '../../types/database.types'
 import { useDocuments } from '../../hooks/useDocuments'
+import { ClientTasksTab } from './ClientTasksTab'
 
 type Client = Database['public']['Tables']['clients']['Row']
 type Task = Database['public']['Tables']['tasks']['Row']
@@ -22,10 +22,10 @@ interface ClientProfileProps {
   onEdit: () => void
   onDelete: () => void
   onNavigateToDoc: (docId: string) => void
+  addTask?: (payload: any) => Promise<any>
 }
 
 type Tab = 'overview' | 'tasks' | 'docs' | 'media'
-type TaskFilter = 'all' | 'A fazer' | 'Fazendo' | 'Concluído' | 'Atrasado'
 
 const STATUS_CONFIG = {
   'A fazer': { color: 'text-status-blue bg-status-blue/10 border-status-blue/20', icon: Circle },
@@ -109,15 +109,11 @@ function FileCard({ name, onDelete, getUrl }: { name: string; clientId: string; 
   )
 }
 
-export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc }: ClientProfileProps) {
+export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc, addTask }: ClientProfileProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
-  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
-  const [taskAssigneeFilter, setTaskAssigneeFilter] = useState<string>('all')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [openDocId, setOpenDocId] = useState<string | null>(null)
   const [linkDocOpen, setLinkDocOpen] = useState(false)
-  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
-  const [templateSavedName, setTemplateSavedName] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -130,25 +126,11 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
   const clientDocs = documents.filter(d => d.client_id === client.id)
   const unlinkedDocs = documents.filter(d => !d.client_id)
 
-  const taskCounts = {
-    all: clientTasks.length,
-    'A fazer': clientTasks.filter(t => t.status === 'A fazer').length,
-    'Fazendo': clientTasks.filter(t => t.status === 'Fazendo').length,
-    'Concluído': clientTasks.filter(t => t.status === 'Concluído').length,
-    'Atrasado': clientTasks.filter(t => t.status === 'Atrasado').length,
-  }
-
-  const filteredTasks = clientTasks
-    .filter(t => taskFilter === 'all' || t.status === taskFilter)
-    .filter(t => taskAssigneeFilter === 'all' || t.assigned_to === taskAssigneeFilter)
-
   useEffect(() => {
     if (activeTab === 'media') fetchFiles(client.id)
   }, [activeTab, client.id, fetchFiles])
 
   useEffect(() => {
-    setTaskFilter('all')
-    setTaskAssigneeFilter('all')
     setSelectedTask(null)
     setOpenDocId(null)
     setUploadError(null)
@@ -377,138 +359,12 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
 
         {/* ── TAREFAS ── */}
         {activeTab === 'tasks' && (
-          <div className="p-6">
-            {/* Template saved toast */}
-            {templateSavedName && (
-              <div className="mb-4 px-4 py-3 bg-accent-light border border-accent/30 rounded-radius-sm flex items-center gap-3">
-                <Layers size={14} className="text-accent shrink-0" />
-                <p className="text-small text-accent font-medium flex-1">
-                  Modelo "<strong>{templateSavedName}</strong>" salvo com sucesso!
-                </p>
-                <button onClick={() => setTemplateSavedName(null)} className="text-accent/60 hover:text-accent">
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-            {/* Filters */}
-            <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
-                {(['all', 'A fazer', 'Fazendo', 'Concluído', 'Atrasado'] as TaskFilter[]).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setTaskFilter(f)}
-                    className={`px-3 py-1.5 rounded-radius-sm text-small font-medium transition-colors border ${
-                      taskFilter === f
-                        ? 'bg-accent text-white border-accent'
-                        : 'bg-bg-surface text-text-secondary border-border hover:border-accent/50 hover:text-text-primary'
-                    }`}
-                  >
-                    {f === 'all' ? 'Todas' : f}
-                    <span className="ml-1.5 opacity-60 text-[10px]">
-                      {f === 'all' ? taskCounts.all : taskCounts[f as keyof typeof taskCounts]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <button
-                  onClick={() => setSaveTemplateOpen(true)}
-                  disabled={clientTasks.length === 0}
-                  title="Salvar tarefas como modelo reutilizável"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-small text-text-secondary bg-bg-surface border border-border rounded-radius-sm hover:border-accent/50 hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Layers size={12} /> Salvar como Modelo
-                </button>
-                <User size={12} className="text-text-tertiary" />
-                <div className="flex items-center gap-1 bg-bg-surface border border-border rounded-radius-sm p-0.5">
-                  <button
-                    onClick={() => setTaskAssigneeFilter('all')}
-                    className={`px-2.5 py-1 rounded text-small transition-colors ${
-                      taskAssigneeFilter === 'all'
-                        ? 'bg-bg-surface-raised text-text-primary font-semibold shadow-sm'
-                        : 'text-text-tertiary hover:text-text-secondary'
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  {TEAM_USERS.map(u => (
-                    <button
-                      key={u.email}
-                      onClick={() => setTaskAssigneeFilter(u.email)}
-                      className={`px-2.5 py-1 rounded text-small transition-colors ${
-                        taskAssigneeFilter === u.email
-                          ? 'bg-bg-surface-raised text-text-primary font-semibold shadow-sm'
-                          : 'text-text-tertiary hover:text-text-secondary'
-                      }`}
-                    >
-                      {u.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {filteredTasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <CheckSquare size={36} className="text-text-tertiary opacity-25 mb-3" />
-                <p className="text-body text-text-tertiary">Nenhuma tarefa encontrada com os filtros aplicados.</p>
-              </div>
-            ) : (
-              <div className="bg-bg-surface rounded-radius-md border border-border shadow-card overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="border-b border-border bg-bg-surface-raised">
-                    <tr>
-                      <th className="px-4 py-2.5 text-label text-text-tertiary uppercase tracking-wide w-8">P</th>
-                      <th className="px-4 py-2.5 text-label text-text-tertiary uppercase tracking-wide">Tarefa</th>
-                      <th className="px-4 py-2.5 text-label text-text-tertiary uppercase tracking-wide">Status</th>
-                      <th className="px-4 py-2.5 text-label text-text-tertiary uppercase tracking-wide">Prazo</th>
-                      <th className="px-4 py-2.5 text-label text-text-tertiary uppercase tracking-wide">Responsável</th>
-                      <th className="px-4 py-2.5 text-label text-text-tertiary uppercase tracking-wide w-16">Tempo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTasks.map(task => {
-                      const cfg = STATUS_CONFIG[task.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG['A fazer']
-                      return (
-                        <tr
-                          key={task.id}
-                          onClick={() => setSelectedTask(task)}
-                          className="border-b border-border/50 hover:bg-bg-app transition-colors cursor-pointer"
-                        >
-                          <td className="px-4 py-3"><PriorityBars priority={task.priority} /></td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              {task.is_done && <CheckCircle2 size={13} className="text-accent shrink-0" />}
-                              <span className={`text-small ${task.is_done ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>{task.title}</span>
-                            </div>
-                            {task.description && <p className="text-[11px] text-text-tertiary mt-0.5 line-clamp-1">{task.description}</p>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cfg.color}`}>{task.status}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <DeadlineBadge deadline={task.deadline} isDone={task.is_done} />
-                          </td>
-                          <td className="px-4 py-3">
-                            {task.assigned_to ? (
-                              <span className="text-small text-text-tertiary">
-                                {TEAM_USERS.find(u => u.email === task.assigned_to)?.label ?? task.assigned_to.split('@')[0]}
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-text-tertiary italic">—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-mono text-small text-text-tertiary">{task.estimated_minutes}m</span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <ClientTasksTab
+            client={client}
+            tasks={tasks}
+            addTask={addTask}
+            onTaskClick={setSelectedTask}
+          />
         )}
 
         {/* ── DOCUMENTOS ── */}
@@ -683,19 +539,6 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
           </div>
         )}
       </div>
-
-      {/* ── Save Template Modal ── */}
-      {saveTemplateOpen && (
-        <SaveTemplateModal
-          clientName={client.name}
-          tasks={clientTasks}
-          onClose={() => setSaveTemplateOpen(false)}
-          onSaved={name => {
-            setTemplateSavedName(name)
-            setTimeout(() => setTemplateSavedName(null), 5000)
-          }}
-        />
-      )}
 
       {/* ── Task Detail Modal ── */}
       {selectedTask && (
