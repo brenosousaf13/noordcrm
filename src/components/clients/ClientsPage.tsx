@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useClients } from '../../hooks/useClients'
 import { useTasks } from '../../hooks/useTasks'
-import { Plus, Users, X, MapPin, Search, Building2 } from 'lucide-react'
+import { Plus, Users, X, MapPin, Search, Building2, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import type { Database } from '../../types/database.types'
 import { ClientProfile } from './ClientProfile'
 
@@ -21,6 +21,7 @@ export function ClientsPage({ onNavigateToDoc }: ClientsPageProps) {
   const [editingClient, setEditingClient] = useState<Partial<Client> | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const filtered = clients.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
   const selectedClient = clients.find(c => c.id === selectedId) ?? null
 
@@ -69,85 +70,119 @@ export function ClientsPage({ onNavigateToDoc }: ClientsPageProps) {
   return (
     <main className="flex-1 h-screen overflow-hidden flex bg-bg-app animate-in fade-in duration-300">
       {/* ── Left Sidebar ── */}
-      <aside className="w-[272px] shrink-0 bg-bg-surface border-r border-border flex flex-col h-full">
-        {/* Sidebar header */}
-        <div className="px-4 pt-5 pb-3 shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <h1 className="text-section font-bold text-text-primary flex items-center gap-2">
-              <Users size={16} className="text-accent" /> Clientes
-            </h1>
+      <aside className={`${sidebarCollapsed ? 'w-[48px]' : 'w-[272px]'} shrink-0 bg-bg-surface border-r border-border flex flex-col h-full transition-all duration-200 overflow-hidden`}>
+        {sidebarCollapsed ? (
+          /* Collapsed state — just color dots + expand button */
+          <div className="flex flex-col items-center py-4 gap-3">
             <button
-              onClick={() => setEditingClient({ color: COLORS[0] })}
-              title="Novo Cliente"
-              className="w-7 h-7 flex items-center justify-center rounded-radius-sm bg-accent text-white hover:bg-accent-hover transition-colors shadow-card"
+              onClick={() => setSidebarCollapsed(false)}
+              title="Expandir menu"
+              className="w-8 h-8 flex items-center justify-center rounded-radius-sm text-text-tertiary hover:text-text-primary hover:bg-bg-app transition-colors"
             >
-              <Plus size={14} strokeWidth={2.5} />
+              <PanelLeftOpen size={15} />
             </button>
+            <div className="w-full border-t border-border my-1" />
+            {filtered.map(c => (
+              <button
+                key={c.id}
+                onClick={() => { setSidebarCollapsed(false); setSelectedId(c.id) }}
+                title={c.name}
+                className={`w-7 h-7 rounded-full border-2 shrink-0 transition-all ${c.id === selectedId ? 'border-accent scale-110' : 'border-bg-surface hover:scale-110'}`}
+                style={{ backgroundColor: c.color }}
+              />
+            ))}
           </div>
-          <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
-            <input
-              type="text"
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-bg-app border border-border rounded-radius-sm pl-8 pr-3 py-1.5 text-small focus:border-accent focus:outline-none transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* Client list */}
-        <div className="flex-1 overflow-y-auto px-2 pb-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-10 gap-2 text-text-tertiary">
-              <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <>
+            {/* Sidebar header */}
+            <div className="px-4 pt-5 pb-3 shrink-0">
+              <div className="flex items-center justify-between mb-3">
+                <h1 className="text-section font-bold text-text-primary flex items-center gap-2">
+                  <Users size={16} className="text-accent" /> Clientes
+                </h1>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setSidebarCollapsed(true)}
+                    title="Colapsar menu"
+                    className="w-7 h-7 flex items-center justify-center rounded-radius-sm text-text-tertiary hover:text-text-primary hover:bg-bg-app transition-colors"
+                  >
+                    <PanelLeftClose size={14} />
+                  </button>
+                  <button
+                    onClick={() => setEditingClient({ color: COLORS[0] })}
+                    title="Novo Cliente"
+                    className="w-7 h-7 flex items-center justify-center rounded-radius-sm bg-accent text-white hover:bg-accent-hover transition-colors shadow-card"
+                  >
+                    <Plus size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                <input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full bg-bg-app border border-border rounded-radius-sm pl-8 pr-3 py-1.5 text-small focus:border-accent focus:outline-none transition-colors"
+                />
+              </div>
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-              <Users size={32} className="text-text-tertiary opacity-20 mb-2" />
-              <p className="text-small text-text-tertiary">
-                {searchTerm ? 'Nenhum resultado.' : 'Nenhum cliente cadastrado.'}
+
+            {/* Client list */}
+            <div className="flex-1 overflow-y-auto px-2 pb-4">
+              {loading ? (
+                <div className="flex items-center justify-center py-10 gap-2 text-text-tertiary">
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                  <Users size={32} className="text-text-tertiary opacity-20 mb-2" />
+                  <p className="text-small text-text-tertiary">
+                    {searchTerm ? 'Nenhum resultado.' : 'Nenhum cliente cadastrado.'}
+                  </p>
+                </div>
+              ) : (
+                filtered.map(c => {
+                  const active = c.id === selectedId
+                  const activeTasks = tasks.filter(t => t.client_id === c.id && t.status !== 'Concluído').length
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedId(c.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-radius-sm mb-1 transition-colors flex items-center gap-3 group ${
+                        active
+                          ? 'bg-accent-light border border-accent/20'
+                          : 'hover:bg-bg-surface-raised border border-transparent'
+                      }`}
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: c.color }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-small font-medium truncate ${active ? 'text-accent' : 'text-text-primary'}`}>
+                          {c.name}
+                        </p>
+                        {activeTasks > 0 && (
+                          <p className="text-[10px] text-text-tertiary mt-0.5">
+                            {activeTasks} {activeTasks === 1 ? 'tarefa ativa' : 'tarefas ativas'}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="px-4 py-3 border-t border-border shrink-0">
+              <p className="text-[10px] text-text-tertiary">
+                {filtered.length} {filtered.length === 1 ? 'cliente' : 'clientes'}
               </p>
             </div>
-          ) : (
-            filtered.map(c => {
-              const active = c.id === selectedId
-              const activeTasks = tasks.filter(t => t.client_id === c.id && t.status !== 'Concluído').length
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedId(c.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-radius-sm mb-1 transition-colors flex items-center gap-3 group ${
-                    active
-                      ? 'bg-accent-light border border-accent/20'
-                      : 'hover:bg-bg-surface-raised border border-transparent'
-                  }`}
-                >
-                  <div
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: c.color }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-small font-medium truncate ${active ? 'text-accent' : 'text-text-primary'}`}>
-                      {c.name}
-                    </p>
-                    {activeTasks > 0 && (
-                      <p className="text-[10px] text-text-tertiary mt-0.5">
-                        {activeTasks} {activeTasks === 1 ? 'tarefa ativa' : 'tarefas ativas'}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              )
-            })
-          )}
-        </div>
-
-        <div className="px-4 py-3 border-t border-border shrink-0">
-          <p className="text-[10px] text-text-tertiary">
-            {filtered.length} {filtered.length === 1 ? 'cliente' : 'clientes'}
-          </p>
-        </div>
+          </>
+        )}
       </aside>
 
       {/* ── Right Panel ── */}

@@ -5,6 +5,7 @@ import {
   X, Clock, AlertCircle, CheckCircle2, Circle, UploadCloud,
   ExternalLink, Building2, Globe, Lock, Link2, Film
 } from 'lucide-react'
+import { useSubtasks } from '../../hooks/useSubtasks'
 import { format, isToday, isTomorrow, isPast, differenceInCalendarDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useClientFiles } from '../../hooks/useClientFiles'
@@ -118,6 +119,12 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const { subtasks, fetchSubtasks, toggleSubtask } = useSubtasks(selectedTask?.id ?? '')
+
+  useEffect(() => {
+    if (selectedTask?.id) fetchSubtasks()
+  }, [selectedTask?.id])
 
   const { documents, addDocument, updateDocument, generateShareToken, revokeShareToken } = useDocuments()
   const { files, loading: filesLoading, fetchFiles, uploadFile, deleteFile, getPublicUrl } = useClientFiles()
@@ -622,6 +629,44 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
                   <a href={selectedTask.file_url} target="_blank" rel="noopener noreferrer" className="text-small text-accent hover:underline flex items-center gap-1.5">
                     <ExternalLink size={12} /> Ver arquivo
                   </a>
+                </div>
+              )}
+
+              {subtasks.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[10px] text-text-tertiary uppercase tracking-wide">
+                      Subtarefas
+                    </div>
+                    <span className="text-[10px] text-text-tertiary">
+                      {subtasks.filter(s => s.is_done).length}/{subtasks.length}
+                    </span>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="w-full h-1 bg-bg-app rounded-full mb-3 overflow-hidden">
+                    <div
+                      className="h-full bg-accent rounded-full transition-all duration-300"
+                      style={{ width: `${(subtasks.filter(s => s.is_done).length / subtasks.length) * 100}%` }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    {subtasks.map(sub => (
+                      <div key={sub.id} className="flex items-center gap-2.5">
+                        <button
+                          onClick={() => toggleSubtask(sub.id, !sub.is_done)}
+                          className="shrink-0 transition-colors"
+                        >
+                          {sub.is_done
+                            ? <CheckCircle2 size={15} className="text-accent" />
+                            : <Circle size={15} className="text-text-tertiary hover:text-accent transition-colors" />
+                          }
+                        </button>
+                        <span className={`text-small leading-tight ${sub.is_done ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
+                          {sub.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

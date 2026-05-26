@@ -117,10 +117,9 @@ export function Dashboard() {
           {navItems.map((item) => {
             const isActive = activeTab === item.id
             const Icon = item.icon
-            const isClients = item.id === 'clientes'
 
             return (
-              <div key={item.id} className="relative group">
+              <div key={item.id}>
                 <button
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex flex-col items-center justify-center py-3 rounded-radius-md transition-all duration-200 ${
@@ -134,30 +133,6 @@ export function Dashboard() {
                       {item.label}
                   </span>
                 </button>
-
-                {isClients && (
-                  <div className="absolute left-[calc(100%+8px)] top-0 w-[240px] bg-bg-surface border border-border shadow-modal rounded-radius-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 -translate-x-2 group-hover:translate-x-0 z-[100] flex flex-col overflow-hidden">
-                     <div className="px-4 py-3 bg-bg-surface-raised border-b border-border flex items-center justify-between">
-                        <span className="font-semibold text-small text-text-primary uppercase tracking-wide">Meus Clientes</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setActiveTab('clientes') }}
-                          className="bg-accent text-white p-1 rounded-sm hover:bg-accent-light hover:text-accent transition-colors"
-                          title="Novo Cliente"
-                        >
-                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                        </button>
-                     </div>
-                     <div className="max-h-[300px] overflow-y-auto p-2 flex flex-col gap-1">
-                        {clients.map(c => (
-                           <button key={c.id} className="text-left px-3 py-2 text-small text-text-secondary hover:bg-bg-app hover:text-text-primary rounded-radius-sm transition-colors flex items-center gap-2 truncate">
-                             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
-                             <span className="truncate">{c.name}</span>
-                           </button>
-                        ))}
-                        {clients.length === 0 && <span className="text-small text-text-tertiary p-2 text-center text-[11px]">Nenhum cliente aqui.</span>}
-                     </div>
-                  </div>
-                )}
               </div>
             )
           })}
