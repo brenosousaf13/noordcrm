@@ -178,9 +178,8 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
   return (
     <div className="flex-1 flex flex-col h-full bg-bg-app overflow-hidden">
       {/* ── Profile Header ── */}
-      <div className="bg-bg-surface border-b border-border shrink-0">
-        <div className="h-12 w-full" style={{ background: `linear-gradient(135deg, ${client.color}22 0%, ${client.color}08 100%)`, borderBottom: `2px solid ${client.color}30` }} />
-        <div className="px-6 pb-4 -mt-5">
+      <div className="border-b shrink-0" style={{ background: `linear-gradient(135deg, ${client.color}18 0%, ${client.color}06 100%)`, borderColor: `${client.color}30` }}>
+        <div className="px-6 pt-5 pb-4">
           <div className="flex items-end justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-radius-md border-2 border-bg-surface shadow-raised" style={{ backgroundColor: client.color }} />
