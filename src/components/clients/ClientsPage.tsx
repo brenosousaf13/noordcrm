@@ -87,9 +87,11 @@ export function ClientsPage({ onNavigateToDoc }: ClientsPageProps) {
                 key={c.id}
                 onClick={() => { setSidebarCollapsed(false); setSelectedId(c.id) }}
                 title={c.name}
-                className={`w-7 h-7 rounded-full border-2 shrink-0 transition-all ${c.id === selectedId ? 'border-accent scale-110' : 'border-bg-surface hover:scale-110'}`}
+                className={`w-8 h-8 rounded-full border-2 shrink-0 transition-all flex items-center justify-center font-bold text-[11px] text-white ${c.id === selectedId ? 'border-accent scale-110' : 'border-bg-surface hover:scale-110'}`}
                 style={{ backgroundColor: c.color }}
-              />
+              >
+                {c.name.charAt(0).toUpperCase()}
+              </button>
             ))}
           </div>
         ) : (
