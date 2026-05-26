@@ -129,6 +129,72 @@ export interface Database {
         }
         Relationships: []
       }
+      task_templates: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          created_by: string | null
+          use_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name?: string
+          description?: string | null
+          created_by?: string | null
+          use_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          created_by?: string | null
+          use_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      task_template_tasks: {
+        Row: {
+          id: string
+          template_id: string
+          title: string
+          description: string | null
+          status: string
+          priority: number
+          estimated_minutes: number
+          assigned_to: string | null
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          template_id: string
+          title?: string
+          description?: string | null
+          status?: string
+          priority?: number
+          estimated_minutes?: number
+          assigned_to?: string | null
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          template_id?: string
+          title?: string
+          description?: string | null
+          status?: string
+          priority?: number
+          estimated_minutes?: number
+          assigned_to?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           id: string

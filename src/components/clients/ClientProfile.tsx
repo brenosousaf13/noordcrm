@@ -3,8 +3,9 @@ import {
   Mail, Phone, MapPin, FileText, Edit3, Trash2,
   CheckSquare, BookOpen, ImageIcon, Plus, Download,
   X, Clock, AlertCircle, CheckCircle2, Circle, UploadCloud,
-  ExternalLink, Building2, Globe, Lock, Link2, User, Film
+  ExternalLink, Building2, Globe, Lock, Link2, User, Film, Layers
 } from 'lucide-react'
+import { SaveTemplateModal } from '../templates/SaveTemplateModal'
 import { format, isToday, isTomorrow, isPast, differenceInCalendarDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useClientFiles } from '../../hooks/useClientFiles'
@@ -115,6 +116,8 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [openDocId, setOpenDocId] = useState<string | null>(null)
   const [linkDocOpen, setLinkDocOpen] = useState(false)
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
+  const [templateSavedName, setTemplateSavedName] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -375,6 +378,18 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
         {/* ── TAREFAS ── */}
         {activeTab === 'tasks' && (
           <div className="p-6">
+            {/* Template saved toast */}
+            {templateSavedName && (
+              <div className="mb-4 px-4 py-3 bg-accent-light border border-accent/30 rounded-radius-sm flex items-center gap-3">
+                <Layers size={14} className="text-accent shrink-0" />
+                <p className="text-small text-accent font-medium flex-1">
+                  Modelo "<strong>{templateSavedName}</strong>" salvo com sucesso!
+                </p>
+                <button onClick={() => setTemplateSavedName(null)} className="text-accent/60 hover:text-accent">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
             {/* Filters */}
             <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
@@ -395,7 +410,15 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={() => setSaveTemplateOpen(true)}
+                  disabled={clientTasks.length === 0}
+                  title="Salvar tarefas como modelo reutilizável"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-small text-text-secondary bg-bg-surface border border-border rounded-radius-sm hover:border-accent/50 hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Layers size={12} /> Salvar como Modelo
+                </button>
                 <User size={12} className="text-text-tertiary" />
                 <div className="flex items-center gap-1 bg-bg-surface border border-border rounded-radius-sm p-0.5">
                   <button
@@ -660,6 +683,19 @@ export function ClientProfile({ client, tasks, onEdit, onDelete, onNavigateToDoc
           </div>
         )}
       </div>
+
+      {/* ── Save Template Modal ── */}
+      {saveTemplateOpen && (
+        <SaveTemplateModal
+          clientName={client.name}
+          tasks={clientTasks}
+          onClose={() => setSaveTemplateOpen(false)}
+          onSaved={name => {
+            setTemplateSavedName(name)
+            setTimeout(() => setTemplateSavedName(null), 5000)
+          }}
+        />
+      )}
 
       {/* ── Task Detail Modal ── */}
       {selectedTask && (
